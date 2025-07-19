@@ -1,6 +1,6 @@
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:6.2.0
+    image: confluentinc/cp-zookeeper:7.2.15
     container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -16,10 +16,10 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - packet_pulse_network
+      - packetpulse_network
 
   kafka:
-    image: confluentinc/cp-kafka:6.2.0
+    image: confluentinc/cp-kafka:7.2.15
     container_name: kafka
     depends_on:
       - zookeeper
@@ -42,7 +42,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - packet_pulse_network
+      - packetpulse_network
 
   venus-api:
     build:
@@ -60,7 +60,7 @@ services:
       - MAX_CONNECTIONS=1000
       - API_KEY=mars-secret-key
     networks:
-      - packet_pulse_network
+      - packetpulse_network
 
   mars-simulator:
     build:
@@ -75,10 +75,10 @@ services:
       - TOTAL_SESSIONS=50
     restart: "no"
     networks:
-      - packet_pulse_network
+      - packetpulse_network
 
 networks:
-  packet_pulse_network:
+  packetpulse_network:
     driver: bridge
 
 volumes:
