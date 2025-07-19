@@ -1,7 +1,3 @@
-"""
-Configuration for Venus - Packet Tracking API
-"""
-
 # API Server settings
 HOST = "0.0.0.0"
 PORT = 8000
@@ -14,10 +10,6 @@ KAFKA_CONSUMER_GROUP = "venus"
 
 # Connection management
 MAX_CONCURRENT_CONNECTIONS = 5000  # Limit concurrent WebSocket connections
-
-# Data storage (legacy - kept for backwards compatibility)
-DATA_DIR = "data"
-CSV_FILENAME_FORMAT = "packet_deliveries_%Y-%m-%d.csv"
 
 # Security settings
 API_KEYS = {

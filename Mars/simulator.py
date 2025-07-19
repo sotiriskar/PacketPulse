@@ -1,10 +1,16 @@
 from Mars.models import PacketDelivery, DeliveryStatus
 from websockets.exceptions import ConnectionClosed
+from Mars.config import (
+    UPDATE_INTERVAL,
+    TOTAL_SESSIONS,
+    WEBSOCKET_URL,
+    SIM_SPEED,
+    API_KEY
+)
 from typing import Dict
 import websockets
 import asyncio
 import logging
-import random
 import signal
 import uuid
 import json
@@ -16,27 +22,6 @@ logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Default WebSocket URL
-DEFAULT_WEBSOCKET_URL = "ws://venus-api:8000/ws"
-WEBSOCKET_URL = os.environ.get("WEBSOCKET_URL", DEFAULT_WEBSOCKET_URL)
-
-# API key for authentication
-API_KEY = os.environ.get("API_KEY", "mars-secret-key")
-
-# NYC locations
-NYC_LOCATIONS = [
-    "Times Square",
-    "Central Park",
-    "Empire State Building",
-    "Brooklyn Bridge",
-    "Rockefeller Center",
-    "Wall Street",
-    "Grand Central",
-    "Battery Park",
-    "SoHo",
-    "Chinatown"
-]
-
 class Simulator:
     def __init__(self):
         self.websocket = None
@@ -44,7 +29,7 @@ class Simulator:
         self.shutdown_event = asyncio.Event()
 
         # Number of sessions/devices to simulate in one run
-        self.total_sessions: int = int(os.environ.get("TOTAL_SESSIONS", "5"))
+        self.total_sessions: int = TOTAL_SESSIONS
 
         # Prepare all deliveries once at startup
         self.active_deliveries: Dict[str, PacketDelivery] = {}
@@ -59,15 +44,14 @@ class Simulator:
         # Background task for consuming server acknowledgments
         self._recv_task: asyncio.Task | None = None
 
-        # Set a speed for progress updates
-        FAST_SPEED = float(os.getenv("SIM_SPEED", "0.02"))          # 0.02 = finish in ~50 s
-        self.speed = FAST_SPEED
+        # Movement speed for progress updates
+        self.speed = SIM_SPEED
 
     def _create_delivery(self) -> PacketDelivery:
         """Generate a random delivery between two NYC locations"""
-        # Select random start and end locations
-        start_location = random.choice(NYC_LOCATIONS)
-        end_location = random.choice([loc for loc in NYC_LOCATIONS if loc != start_location])
+        # Location names are irrelevant – using simple placeholders
+        start_location = "origin"
+        end_location = "destination"
         
         # Create a new delivery
         delivery = PacketDelivery(
@@ -80,7 +64,7 @@ class Simulator:
         )
         
         logger.info(
-            f"[SESSION PREPARED] {delivery.device_id} | order {delivery.order_id} | {start_location} -> {end_location}")
+            f"[SESSION PREPARED] {delivery.device_id} | order {delivery.order_id}")
         return delivery
 
     def update_deliveries(self):
@@ -136,7 +120,7 @@ class Simulator:
                     await self.send_delivery_data(delivery)
                 
                 # Wait before the next update
-                await asyncio.sleep(1)
+                await asyncio.sleep(UPDATE_INTERVAL)
                 
                 # All sessions done → shutdown
                 if not self.active_deliveries and len(self.completed_deliveries) == self.total_sessions:
