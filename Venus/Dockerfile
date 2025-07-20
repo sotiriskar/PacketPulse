@@ -9,7 +9,7 @@ COPY Venus/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Venus application code
-COPY Venus/ ./Venus/
+COPY Venus/ .
 
 # Expose the API port
 EXPOSE 8000
@@ -19,4 +19,4 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 # Start the API server
-CMD ["python", "-m", "Venus.api"] 
+CMD ["python", "main.py"] 

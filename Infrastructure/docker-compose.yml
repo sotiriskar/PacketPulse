@@ -44,11 +44,11 @@ services:
     networks:
       - packetpulse_network
 
-  venus-api:
+  venus:
     build:
       context: ..
       dockerfile: Venus/Dockerfile
-    container_name: venus-api
+    container_name: venus
     depends_on:
       - kafka
     ports:
@@ -62,15 +62,15 @@ services:
     networks:
       - packetpulse_network
 
-  mars-simulator:
+  mars:
     build:
       context: ..
       dockerfile: Mars/Dockerfile
-    container_name: mars-simulator
+    container_name: mars
     depends_on:
-      - venus-api
+      - venus
     environment:
-      - WEBSOCKET_URL=ws://venus-api:8000/ws
+      - WEBSOCKET_URL=ws://venus:8000/ws
       - API_KEY=mars-secret-key
       - TOTAL_SESSIONS=50
     restart: "no"

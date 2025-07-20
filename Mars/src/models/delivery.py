@@ -1,9 +1,9 @@
-import enum
-import random
-import uuid
+from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Any, Optional
+import random
+import enum
+
 
 class DeliveryStatus(str, enum.Enum):
     STARTED = "started"

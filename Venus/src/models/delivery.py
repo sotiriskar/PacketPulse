@@ -1,7 +1,7 @@
-import enum
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
 import datetime
+import enum
 
 
 class DeliveryStatus(str, enum.Enum):
@@ -34,8 +34,8 @@ class DeliveryData(BaseModel):
     current_lat: float
     current_lon: float
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "device_id": "d8f3b8e7-9c9d-4b5c-8e5f-1a2b3c4d5e6f",
                 "vehicle_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
@@ -53,6 +53,7 @@ class DeliveryData(BaseModel):
                 "current_lon": -73.9800
             }
         }
+    )
 
 
 class DeliveryBatch(BaseModel):

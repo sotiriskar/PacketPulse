@@ -9,11 +9,11 @@ COPY Mars/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Mars application code
-COPY Mars/ ./Mars/
+COPY Mars/ .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 # Start the simulator
-CMD ["python", "-m", "Mars.simulator"] 
+CMD ["python", "main.py"]

@@ -1,6 +1,6 @@
-from Mars.models import PacketDelivery, DeliveryStatus
+from src.models.delivery import PacketDelivery, DeliveryStatus
 from websockets.exceptions import ConnectionClosed
-from Mars.config import (
+from src.config.settings import (
     UPDATE_INTERVAL,
     TOTAL_SESSIONS,
     WEBSOCKET_URL,
@@ -96,6 +96,9 @@ class Simulator:
                 data = delivery.to_dict()
                 await self.websocket.send(json.dumps(data))
                 
+                # Wait for acknowledgement
+                await self.websocket.recv()
+                
                 # Log the status being sent
                 logger.debug(f"Sent data for device {delivery.device_id}, status: {delivery.status}")
                 
@@ -112,12 +115,23 @@ class Simulator:
             try:
                 # No new deliveries are generated – we prepared everything up-front.
                 
-                # Update all active deliveries
-                self.update_deliveries()
-                
-                # Send data for all active deliveries
-                for delivery in list(self.active_deliveries.values()):
+                # Update, send, and check completion for each active delivery
+                for device_id, delivery in list(self.active_deliveries.items()):
+                    # Update the delivery position
+                    delivery.update_position(self.speed)
+                    
+                    # Check if delivery is completed
+                    if delivery.is_completed() and device_id not in self.completed_deliveries:
+                        delivery.status = DeliveryStatus.COMPLETED
+                        self.completed_deliveries.add(device_id)
+                        logger.info(f"[SESSION END] {device_id} completed")
+                    
+                    # Send the current status (including completed if just set)
                     await self.send_delivery_data(delivery)
+                    
+                    # Remove completed deliveries after sending
+                    if device_id in self.completed_deliveries and delivery.status == DeliveryStatus.COMPLETED:
+                        self.active_deliveries.pop(device_id, None)
                 
                 # Wait before the next update
                 await asyncio.sleep(UPDATE_INTERVAL)
@@ -129,13 +143,12 @@ class Simulator:
                     self.running = False
                     
                     # Close the websocket properly
-                    if self.websocket and self.websocket.open:
-                        await self.websocket.close()
-                        logger.info("WebSocket connection closed properly")
-                    
-                    # Ensure background receiver task stops
-                    if self._recv_task and not self._recv_task.done():
-                        self._recv_task.cancel()
+                    if self.websocket and not self.websocket.closed:
+                        try:
+                            await self.websocket.close()
+                            logger.info("WebSocket connection closed properly")
+                        except Exception as e:
+                            logger.warning(f"Warning: Error during WebSocket close: {e}")
                     
                     # Force exit the process
                     logger.info("Exiting simulator process")
@@ -144,9 +157,8 @@ class Simulator:
                     
             except ConnectionClosed as e:
                 logger.error(f"WebSocket connection closed: {e}")
-                # Try to reconnect instead of shutting down
                 self.websocket = None
-                await asyncio.sleep(1)
+                raise
                 
             except Exception as e:
                 logger.error(f"Error in update loop: {e}")
@@ -166,10 +178,6 @@ class Simulator:
                 
                 if response_data.get("status") == "authenticated":
                     logger.info("Successfully authenticated with Venus API")
-                    # Start background task that continuously consumes inbound messages so the
-                    # server's outgoing queue doesn't fill up and force-close the connection.
-                    if not self._recv_task or self._recv_task.done():
-                        self._recv_task = asyncio.create_task(self._receive_loop(), name="venus-ws-receiver")
                     return True
                 else:
                     logger.error(f"Authentication failed: {response_data.get('message', 'Unknown error')}")
@@ -178,29 +186,6 @@ class Simulator:
                 logger.error(f"Authentication error: {e}")
                 return False
         return False
-
-    async def _receive_loop(self):
-        """Continuously read messages from the websocket and discard them.
-
-        Venus replies with a small acknowledgement for every payload we send. If the
-        client never reads those messages the server's send buffer (and websockets
-        internal *max_queue*) fills up after ~32 messages and the server drops the
-        connection with the error we observed ("no close frame received or sent").
-        This loop prevents that by eagerly consuming all incoming frames.
-        """
-        try:
-            while self.running and self.websocket and not self.websocket.closed:
-                try:
-                    # We don't do anything with the response – just read and discard.
-                    await self.websocket.recv()
-                except ConnectionClosed:
-                    break
-                except Exception as exc:
-                    logger.debug(f"Receiver loop error: {exc}")
-                    # small pause to avoid busy loop on repeated failures
-                    await asyncio.sleep(0.1)
-        finally:
-            logger.debug("Receiver loop terminated")
 
     async def run(self):
         """Run the simulator"""
@@ -213,9 +198,8 @@ class Simulator:
                 # Disable automatic ping/pong from client side to avoid 1011 keep-alive errors.
                 async with websockets.connect(
                     WEBSOCKET_URL,
-                    ping_interval=None,
-                    ping_timeout=None,
                     close_timeout=5,
+                    max_queue=None,
                 ) as websocket:
                     self.websocket = websocket
                     logger.info(f"Connected to Venus API at {WEBSOCKET_URL}")
@@ -253,8 +237,6 @@ class Simulator:
         # Exit when finished
         if self.shutdown_event.is_set() or retry_count >= max_retries:
             # Clean up background task before exit
-            if self._recv_task and not self._recv_task.done():
-                self._recv_task.cancel()
             os._exit(0)
 
 def setup_signal_handlers():
@@ -284,6 +266,9 @@ async def main():
             simulator.running = False
             simulator.shutdown_event.set()
         logger.info("Simulator exiting")
+        # Clean up background task before exit
+        if simulator._recv_task and not simulator._recv_task.done():
+            simulator._recv_task.cancel()
         os._exit(0)
 
 if __name__ == "__main__":
