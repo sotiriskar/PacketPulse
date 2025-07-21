@@ -107,7 +107,7 @@ services:
     environment:
       - WEBSOCKET_URL=ws://venus:8000/ws
       - API_KEY=mars-secret-key
-      - TOTAL_SESSIONS=1
+      - TOTAL_SESSIONS=10
     restart: "no"
     networks:
       - packetpulse_network
