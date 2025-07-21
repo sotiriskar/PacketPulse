@@ -109,8 +109,6 @@ services:
       - SQLPAD_CONNECTIONS__0__username=trino
       - SQLPAD_CONNECTIONS__0__catalog=iceberg
       - SQLPAD_CONNECTIONS__0__schema=default
-    volumes:
-      - ./etc/sqlpad:/etc/sqlpad
     depends_on:
       - trino
     networks:
@@ -121,10 +119,6 @@ services:
     container_name: clickhouse
     ports:
       - "8123:8123"
-    volumes:
-      - ./clickhouse/data:/var/lib/clickhouse
-      - ./clickhouse/logs:/var/log/clickhouse-server
-      - ./clickhouse/config:/etc/clickhouse-server
     networks:
       - packetpulse_network
     healthcheck:
@@ -192,6 +186,5 @@ networks:
 volumes:
   zookeeper-data:
   zookeeper-log:
-  clickhouse:
   kafka-data:
   minio-data:
