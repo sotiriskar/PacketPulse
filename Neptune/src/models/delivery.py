@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
-import enum
 from typing import Optional
+import enum
 
 
 class DeliveryStatus(str, enum.Enum):

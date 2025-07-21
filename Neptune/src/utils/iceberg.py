@@ -1,8 +1,5 @@
-from pyiceberg.catalog import load_catalog
-import pyarrow as pa
-import logging
-import boto3
 from botocore.exceptions import ClientError
+from pyiceberg.catalog import load_catalog
 from src.config.settings import (
     ICEBERG_NAMESPACE,
     ICEBERG_TABLE,
@@ -12,6 +9,10 @@ from src.config.settings import (
     MINIO_SECRET_KEY,
     MINIO_BUCKET
 )
+import pyarrow as pa
+import logging
+import boto3
+
 
 logger = logging.getLogger("iceberg_utils")
 
