@@ -101,7 +101,7 @@ services:
       - "3000:3000"
     environment:
       - SQLPAD_ADMIN=admin@example.com
-      - SQLPAD_ADMIN_PASSWORD=changeme
+      - SQLPAD_ADMIN_PASSWORD=password
       - SQLPAD_CONNECTIONS__0__name=Trino
       - SQLPAD_CONNECTIONS__0__driver=trino
       - SQLPAD_CONNECTIONS__0__host=trino
