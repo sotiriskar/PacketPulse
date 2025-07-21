@@ -79,6 +79,43 @@ services:
     depends_on:
       - minio
 
+  trino:
+    image: trinodb/trino:476
+    container_name: trino
+    depends_on:
+      - iceberg-rest
+    networks:
+      - packetpulse_network
+    ports:
+      - 8080:8080
+    volumes:
+      - ./etc/trino/config.properties:/etc/trino/config.properties
+      - ./etc/trino/node.properties:/etc/trino/node.properties
+      - ./etc/trino/jvm.config:/etc/trino/jvm.config
+      - ./etc/trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties
+
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    container_name: sqlpad
+    ports:
+      - "3000:3000"
+    environment:
+      - SQLPAD_ADMIN=admin@example.com
+      - SQLPAD_ADMIN_PASSWORD=changeme
+      - SQLPAD_CONNECTIONS__0__name=Trino
+      - SQLPAD_CONNECTIONS__0__driver=trino
+      - SQLPAD_CONNECTIONS__0__host=trino
+      - SQLPAD_CONNECTIONS__0__port=8080
+      - SQLPAD_CONNECTIONS__0__username=trino
+      - SQLPAD_CONNECTIONS__0__catalog=iceberg
+      - SQLPAD_CONNECTIONS__0__schema=default
+    volumes:
+      - ./etc/sqlpad:/etc/sqlpad
+    depends_on:
+      - trino
+    networks:
+      - packetpulse_network
+
   venus:
     build:
       context: ..
