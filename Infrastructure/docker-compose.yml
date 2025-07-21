@@ -123,7 +123,8 @@ services:
       - "8123:8123"
     volumes:
       - ./clickhouse/data:/var/lib/clickhouse
-      - ./clickhouse/logs:/var/log/clickhouse
+      - ./clickhouse/logs:/var/log/clickhouse-server
+      - ./clickhouse/config:/etc/clickhouse-server
     networks:
       - packetpulse_network
     healthcheck:
