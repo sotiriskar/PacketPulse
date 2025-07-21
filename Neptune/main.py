@@ -4,7 +4,6 @@ from confluent_kafka import Consumer
 from src.config.settings import (
     KAFKA_BOOTSTRAP_SERVERS,
     KAFKA_CONSUMER_GROUP,
-    ICEBERG_TABLE,
     KAFKA_TOPIC
 )
 import pyarrow as pa
@@ -12,14 +11,16 @@ import pandas as pd
 import logging
 import json
 
+
+# structured logging
 logger = logging.getLogger("main")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)s %(name)s: %(message)s"
+handler.setFormatter(
+    logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s")
 )
-handler.setFormatter(formatter)
 logger.addHandler(handler)
+
 import warnings
 warnings.filterwarnings(
     "ignore",
@@ -27,19 +28,24 @@ warnings.filterwarnings(
 )
 
 class KafkaConsumer:
-
     def __init__(self) -> None:
         self.config = {
             'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
             'group.id': KAFKA_CONSUMER_GROUP,
-            'auto.offset.reset': 'earliest'
+            'auto.offset.reset': 'earliest',
+            'max.poll.interval.ms': 600000,
         }
         self.consumer = Consumer(self.config)
         self.topic = KAFKA_TOPIC
         self.table = None
 
+        # how many messages per batch
+        self._batch_size = 100_000
+        # how long to wait for a first message (in seconds)
+        self._poll_timeout = 0.1
+
     def initialize_iceberg_table(self) -> None:
-        """Initialize the Iceberg table once when the consumer starts"""
+        """Initialize the Iceberg table once when the consumer starts."""
         try:
             self.table = initialize_iceberg_table()
         except Exception as e:
@@ -47,76 +53,66 @@ class KafkaConsumer:
             raise
 
     def consume_messages(self) -> None:
-        """Subscribe to the Kafka topic and process the incoming messages"""
-        # Initialize the Iceberg table once before starting to consume
+        """Continuously drain Kafka in large batches and write each batch immediately."""
         self.initialize_iceberg_table()
-        
         self.consumer.subscribe([self.topic])
+        logger.info("Consumer running…")
+
         try:
-            logger.info("Consumer running...")
             while True:
-                msg = self.consumer.poll(1.0)
-                if msg is None:
-                    continue
-                elif msg.error():
-                    logger.error("ERROR: {}".format(msg.error()))
-                else:
-                    self.process_message(msg)
+                # 1) Bulk‐poll up to _batch_size records, waiting at most _poll_timeout
+                msgs = self.consumer.consume(
+                    num_messages=self._batch_size,
+                    timeout=self._poll_timeout
+                )
+
+                # 2) Filter out errors & None
+                valid = []
+                for msg in msgs:
+                    if msg is None:
+                        continue
+                    if msg.error():
+                        logger.error(f"Kafka error: {msg.error()}")
+                    else:
+                        valid.append(msg)
+
+                # 3) If we got any messages, process and write them in one shot
+                if valid:
+                    # a) Decode + validate all at once
+                    records = []
+                    for msg in valid:
+                        try:
+                            data = json.loads(msg.value().decode('utf-8'))
+                            validated = validate_delivery_message(data)
+                            records.append(validated.model_dump())
+                        except Exception as e:
+                            logger.error(f"Validation error: {e}")
+
+                    # b) Build one DataFrame / Arrow Table
+                    df = pd.DataFrame(records)
+                    df['timestamp'] = df['timestamp'].astype(str)
+                    table = pa.Table.from_pandas(df)
+
+                    # c) Append in one big batch
+                    try:
+                        self.table.append(table)
+                        logger.info(f"📦 Uploaded batch of {len(records)} sessions")
+                    except Exception as e:
+                        logger.error(f"Iceberg append error: {e}")
+                # else: no messages this round → just loop back immediately
+
         except KeyboardInterrupt:
-            logger.info("Received interrupt signal")
-        except Exception as e:
-            logger.error(f"Error in consume_messages: {e}")
+            logger.info("Interrupted by user")
         finally:
             self.shutdown()
 
-    def process_message(self, msg: object) -> None:
-        """
-        Process the incoming message and convert it to a PyArrow table.
-
-        Args:
-            msg (object): The incoming message
-        """
-        try:
-            message = json.loads(msg.value().decode('utf-8'))
-
-            # Validate the message using the delivery model
-            try:
-                validated_data = validate_delivery_message(message)
-            except ValueError as e:
-                logger.error(f"Message validation failed: {e}")
-                return
-            
-            # Convert validated data to DataFrame
-            pandas_df = pd.DataFrame([validated_data.model_dump()])
-
-            # Ensure timestamp is string format for Iceberg compatibility
-            pandas_df['timestamp'] = pandas_df['timestamp'].astype(str)
-            pyarrow_df = pa.Table.from_pandas(pandas_df)
-            self.process_iceberg(pyarrow_df)
-        except Exception as e:
-            logger.error(f"Error processing message: {e}")
-
-    def process_iceberg(self, pyarrow_df: pa.Table) -> None:
-        """
-        Process the PyArrow table and append the data to the Iceberg table.
-
-        Args:
-            pyarrow_df (pa.Table): The PyArrow table
-        """
-        try:
-            # The table is now initialized in initialize_iceberg_table, so we can just append
-            self.table.append(pyarrow_df)
-            logger.info(f"📦 Uploaded session {pyarrow_df['session_id'][0]} to table {ICEBERG_TABLE}")
-        except Exception as e:
-            logger.error(f"Error processing Iceberg: {e}")
-
     def shutdown(self) -> None:
-        """Shutdown the Kafka consumer gracefully"""
+        """Shutdown the Kafka consumer gracefully."""
         self.consumer.close()
         logger.info("Consumer shutdown gracefully")
 
+
 def main():
-    """Main function to run the Kafka consumer"""
     try:
         consumer = KafkaConsumer()
         consumer.consume_messages()

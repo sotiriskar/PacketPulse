@@ -149,7 +149,7 @@ class Simulator:
 
                     # Force exit the process
                     logger.info("Exiting simulator process")
-                    os._exit(0)  # Use os._exit to force immediate termination
+                    os._exit(0)
                     return
                     
             except ConnectionClosed as e:
