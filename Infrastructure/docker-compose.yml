@@ -116,7 +116,7 @@ services:
     networks:
       - packetpulse_network
 
-  clickhouse-server:
+  clickhouse:
     image: clickhouse/clickhouse-server:latest
     container_name: clickhouse-server
     ports:
@@ -131,15 +131,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  clickhouse-client:
-    image: clickhouse/clickhouse-client:latest
-    container_name: clickhouse-client
-    depends_on:
-      - clickhouse-server
-    entrypoint: ["clickhouse-client", "--host", "clickhouse-server"]
-    networks:
-      - packetpulse_network
 
   venus:
     build:
