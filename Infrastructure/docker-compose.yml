@@ -44,6 +44,41 @@ services:
     networks:
       - packetpulse_network
 
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      packetpulse_network:
+        aliases:
+          - neptune.minio
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio-data:/data
+
+  iceberg-rest:
+    image: tabulario/iceberg-rest
+    container_name: iceberg-rest
+    networks:
+      - packetpulse_network
+    ports:
+      - "8181:8181"
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=eu-west-1
+      - CATALOG_WAREHOUSE=s3://neptune/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+    depends_on:
+      - minio
+
   venus:
     build:
       context: ..
@@ -72,7 +107,7 @@ services:
     environment:
       - WEBSOCKET_URL=ws://venus:8000/ws
       - API_KEY=mars-secret-key
-      - TOTAL_SESSIONS=50
+      - TOTAL_SESSIONS=1
     restart: "no"
     networks:
       - packetpulse_network
@@ -84,10 +119,15 @@ services:
     container_name: neptune
     depends_on:
       - kafka
+      - iceberg-rest
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - KAFKA_TOPIC=sessions
       - KAFKA_CONSUMER_GROUP=neptune
+      - ICEBERG_REST_URL=http://iceberg-rest:8181
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password
     networks:
       - packetpulse_network
 
@@ -99,3 +139,4 @@ volumes:
   zookeeper-data:
   zookeeper-log:
   kafka-data:
+  minio-data:
