@@ -96,7 +96,7 @@ class KafkaConsumer:
                     # c) Append in one big batch
                     try:
                         self.table.append(table)
-                        logger.info(f"📦 Uploaded batch of {len(records)} sessions")
+                        logger.info(f"📦 Uploaded batch of {len(records)} rows")
                     except Exception as e:
                         logger.error(f"Iceberg append error: {e}")
                 # else: no messages this round → just loop back immediately
