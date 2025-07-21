@@ -1,39 +1,117 @@
-# Neptune Service
+# Neptune - Bronze Layer Raw Data Ingestion
 
-Neptune is a Kafka consumer service that reads messages from a specified Kafka topic and prints them to the console. It's designed to work with the PacketPulse ecosystem, consuming messages produced by other services.
+Neptune serves as the **bronze layer** in the PacketPulse data pipeline, responsible for consuming real-time delivery data from Kafka and storing it as-is in Iceberg tables on MinIO S3.
+
+## Overview
+
+Neptune implements the bronze layer pattern, which focuses on:
+- **Raw data ingestion**: Consuming data exactly as received from Kafka
+- **Basic validation**: Ensuring data structure meets expected schema
+- **Reliable storage**: Storing validated raw data without any transformations
+- **Real-time processing**: Processing data as it arrives
+
+## Architecture
+
+```
+Kafka → Neptune (Bronze Layer) → Raw Data Table (MinIO S3)
+```
 
 ## Features
 
-- Consumes messages from a configured Kafka topic
-- Pretty prints JSON messages to console
-- Configurable through environment variables
-- Graceful shutdown on interrupt
+### 🕐 Real-time Data Consumption
+- Consumes delivery data from Kafka topic `sessions`
+- Processes messages as they arrive
+- Handles Kafka consumer group management
 
-## Configuration
+### ✅ Data Validation
+- Validates incoming data against Pydantic models
+- Ensures required fields are present and correctly typed
+- Logs validation errors for monitoring
 
-The service can be configured using the following environment variables:
+### 🏗️ Simple Table Management
+- Creates a single `raw_delivery_data` table if it doesn't exist
+- Implements proper table schema with date partitioning
+- Handles table initialization on startup
 
-- `KAFKA_BOOTSTRAP_SERVERS`: Kafka broker addresses (default: "localhost:9092")
-- `KAFKA_TOPIC`: Topic to consume messages from (default: "sessions")
-- `KAFKA_CONSUMER_GROUP`: Consumer group ID (default: "neptune")
+### 🔄 Service Health Checks
+- Waits for MinIO and Iceberg REST services to be ready
+- Implements retry logic with exponential backoff
+- Ensures all dependencies are available before processing
 
-## Running the Service
+## Table
 
-### Using Docker
+### raw_delivery_data
+Raw delivery data stored exactly as received from Kafka:
+- `device_id`, `vehicle_id`, `session_id`, `order_id` (identifiers)
+- `status`, `timestamp` (status information)
+- `start_lat`, `start_lon`, `end_lat`, `end_lon`, `current_lat`, `current_lon` (location)
+- `event_date` (partitioned by day)
 
+**No calculations, no summaries, no transformations - just raw data!**
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers |
+| `KAFKA_TOPIC` | `sessions` | Kafka topic to consume from |
+| `KAFKA_CONSUMER_GROUP` | `neptune` | Kafka consumer group |
+| `ICEBERG_REST_URL` | `http://iceberg-rest:8181` | Iceberg REST service URL |
+| `MINIO_ENDPOINT` | `http://minio:9000` | MinIO endpoint |
+| `MINIO_ACCESS_KEY` | `admin` | MinIO access key |
+| `MINIO_SECRET_KEY` | `password` | MinIO secret key |
+
+## Usage
+
+### Running with Docker Compose
 ```bash
-docker build -t neptune -f Neptune/Dockerfile .
-docker run -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 neptune
+cd Infrastructure
+docker-compose up neptune
 ```
 
-### Local Development
-
-1. Install dependencies:
+### Manual Setup
 ```bash
+cd Neptune
 pip install -r requirements.txt
+python main.py
 ```
 
-2. Run the service:
-```bash
-python main.py
-``` 
+## Data Flow
+
+1. **Service Startup**: Waits for MinIO and Iceberg REST services
+2. **Table Initialization**: Creates `raw_delivery_data` table if it doesn't exist
+3. **Kafka Consumption**: Starts consuming from the configured topic
+4. **Data Validation**: Validates each message against the DeliveryData model
+5. **Raw Storage**: Stores validated data exactly as received (no transformations)
+6. **Monitoring**: Logs processing status and errors
+
+## Error Handling
+
+- **Invalid JSON**: Logs warning and skips message
+- **Validation Errors**: Logs warning and skips message
+- **Service Unavailable**: Retries with exponential backoff
+- **Table Creation Errors**: Fails startup if table can't be created
+
+## Monitoring
+
+The service provides detailed logging including:
+- Service health status
+- Table creation/initialization
+- Message processing status
+- Validation errors
+- Raw data storage operations
+
+## Bronze Layer Principles
+
+This implementation follows bronze layer best practices:
+- **Store raw data only**: No calculations, aggregations, or transformations
+- **Preserve data integrity**: Store exactly what comes from the source
+- **Basic validation**: Ensure data structure is correct
+- **Reliable storage**: Ensure data is safely stored for downstream processing
+
+## Next Steps
+
+This bronze layer provides the foundation for:
+- **Silver Layer**: Data cleaning and transformation
+- **Gold Layer**: Business logic and aggregation
+- **Analytics**: Real-time dashboards and reporting 

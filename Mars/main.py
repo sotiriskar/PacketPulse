@@ -143,13 +143,10 @@ class Simulator:
                     self.running = False
                     
                     # Close the websocket properly
-                    if self.websocket and not self.websocket.closed:
-                        try:
-                            await self.websocket.close()
-                            logger.info("WebSocket connection closed properly")
-                        except Exception as e:
-                            logger.warning(f"Warning: Error during WebSocket close: {e}")
-                    
+                    if self.websocket:
+                        await self.websocket.close()
+                        logger.info("WebSocket connection closed properly")
+
                     # Force exit the process
                     logger.info("Exiting simulator process")
                     os._exit(0)  # Use os._exit to force immediate termination

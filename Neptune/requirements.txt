@@ -1,3 +1,9 @@
-confluent-kafka==2.3.0
-python-dotenv==1.0.0
-pydantic==2.5.2 
+boto3>=1.26.0
+confluent-kafka>=2.0.0
+python-dotenv>=1.0.0
+pydantic>=1.10.0
+pyarrow>=10.0.0
+pyiceberg>=0.6.0
+tenacity>=8.0.0
+pandas>=2.1.4
+cython>=3.0.0

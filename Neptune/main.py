@@ -1,87 +1,128 @@
-import json
-import logging
-from confluent_kafka import Consumer, KafkaError
-from pydantic import ValidationError
+from src.models.delivery import validate_delivery_message
+from src.utils.iceberg import initialize_iceberg_table
+from confluent_kafka import Consumer
 from src.config.settings import (
     KAFKA_BOOTSTRAP_SERVERS,
-    KAFKA_TOPIC,
-    KAFKA_CONSUMER_GROUP
+    KAFKA_CONSUMER_GROUP,
+    ICEBERG_TABLE,
+    KAFKA_TOPIC
 )
-from src.models.delivery import DeliveryData, DeliveryStatus
+import pyarrow as pa
+import pandas as pd
+import logging
+import json
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logger = logging.getLogger("main")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s %(name)s: %(message)s"
 )
-logger = logging.getLogger(__name__)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="Falling back to pure Python Avro decoder, missing Cython implementation"
+)
 
-def create_consumer():
-    """Create and configure the Kafka consumer."""
-    config = {
-        'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
-        'group.id': KAFKA_CONSUMER_GROUP,
-        'auto.offset.reset': 'earliest'
-    }
-    return Consumer(config)
+class KafkaConsumer:
 
-def process_message(msg):
-    """Process and validate the received delivery data."""
-    try:
-        # Decode message value
-        raw_data = json.loads(msg.value().decode('utf-8'))
+    def __init__(self) -> None:
+        self.config = {
+            'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
+            'group.id': KAFKA_CONSUMER_GROUP,
+            'auto.offset.reset': 'earliest'
+        }
+        self.consumer = Consumer(self.config)
+        self.topic = KAFKA_TOPIC
+        self.table = None
+
+    def initialize_iceberg_table(self) -> None:
+        """Initialize the Iceberg table once when the consumer starts"""
+        try:
+            self.table = initialize_iceberg_table()
+        except Exception as e:
+            logger.error(f"Error initializing Iceberg table: {e}")
+            raise
+
+    def consume_messages(self) -> None:
+        """Subscribe to the Kafka topic and process the incoming messages"""
+        # Initialize the Iceberg table once before starting to consume
+        self.initialize_iceberg_table()
         
-        # Validate message against our model
-        delivery = DeliveryData(**raw_data)
-        
-        # Log the validated delivery data
-        logger.info("Received valid delivery data:")
-        logger.info(f"Order ID: {delivery.order_id}")
-        logger.info(f"Session ID: {delivery.session_id}")
-        logger.info(f"Status: {delivery.status}")
-        logger.info(f"Vehicle ID: {delivery.vehicle_id}")
-        logger.info(f"Device ID: {delivery.device_id}")
-        logger.info("Location Info:")
-        logger.info(f"  Start: ({delivery.start_lat}, {delivery.start_lon})")
-        logger.info(f"  End: ({delivery.end_lat}, {delivery.end_lon})")
-        logger.info(f"  Current: ({delivery.current_lat}, {delivery.current_lon})")
-        logger.info(f"Timestamp: {delivery.timestamp}")
-        logger.info("-" * 50)
-        
-    except json.JSONDecodeError as e:
-        logger.warning(f"Skipping invalid JSON message: {e}")
-    except ValidationError as e:
-        logger.warning(f"Skipping message - validation failed: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error processing message: {e}")
+        self.consumer.subscribe([self.topic])
+        try:
+            logger.info("Consumer running...")
+            while True:
+                msg = self.consumer.poll(1.0)
+                if msg is None:
+                    continue
+                elif msg.error():
+                    logger.error("ERROR: {}".format(msg.error()))
+                else:
+                    self.process_message(msg)
+        except KeyboardInterrupt:
+            logger.info("Received interrupt signal")
+        except Exception as e:
+            logger.error(f"Error in consume_messages: {e}")
+        finally:
+            self.shutdown()
+
+    def process_message(self, msg: object) -> None:
+        """
+        Process the incoming message and convert it to a PyArrow table.
+
+        Args:
+            msg (object): The incoming message
+        """
+        try:
+            message = json.loads(msg.value().decode('utf-8'))
+
+            # Validate the message using the delivery model
+            try:
+                validated_data = validate_delivery_message(message)
+            except ValueError as e:
+                logger.error(f"Message validation failed: {e}")
+                return
+            
+            # Convert validated data to DataFrame
+            pandas_df = pd.DataFrame([validated_data.model_dump()])
+
+            # Ensure timestamp is string format for Iceberg compatibility
+            pandas_df['timestamp'] = pandas_df['timestamp'].astype(str)
+            pyarrow_df = pa.Table.from_pandas(pandas_df)
+            self.process_iceberg(pyarrow_df)
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+
+    def process_iceberg(self, pyarrow_df: pa.Table) -> None:
+        """
+        Process the PyArrow table and append the data to the Iceberg table.
+
+        Args:
+            pyarrow_df (pa.Table): The PyArrow table
+        """
+        try:
+            # The table is now initialized in initialize_iceberg_table, so we can just append
+            self.table.append(pyarrow_df)
+            logger.info(f"📦 Uploaded session {pyarrow_df['session_id'][0]} to table {ICEBERG_TABLE}")
+        except Exception as e:
+            logger.error(f"Error processing Iceberg: {e}")
+
+    def shutdown(self) -> None:
+        """Shutdown the Kafka consumer gracefully"""
+        self.consumer.close()
+        logger.info("Consumer shutdown gracefully")
 
 def main():
-    """Main function to consume and validate delivery data."""
-    consumer = create_consumer()
-    consumer.subscribe([KAFKA_TOPIC])
-    
-    logger.info(f"Started consuming delivery data from topic: {KAFKA_TOPIC}")
-    logger.info("Validating messages against DeliveryData schema")
-    
+    """Main function to run the Kafka consumer"""
     try:
-        while True:
-            msg = consumer.poll(1.0)
-            
-            if msg is None:
-                continue
-            
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    logger.info("Reached end of partition")
-                else:
-                    logger.error(f"Error: {msg.error()}")
-            else:
-                process_message(msg)
-                
-    except KeyboardInterrupt:
-        logger.info("Shutting down consumer...")
-    finally:
-        consumer.close()
+        consumer = KafkaConsumer()
+        consumer.consume_messages()
+    except Exception as e:
+        logger.error(f"Error in main: {e}")
+
 
 if __name__ == "__main__":
     main()

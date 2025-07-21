@@ -3,7 +3,7 @@ import os
 
 # Simulator settings
 # How many sessions (1 session = 1 device) to simulate in this run
-TOTAL_SESSIONS = int(os.getenv("TOTAL_SESSIONS", "10"))
+TOTAL_SESSIONS = int(os.getenv("TOTAL_SESSIONS", "1"))
 
 # Frequency (seconds) between each position update sent over the websocket
 UPDATE_INTERVAL = float(os.getenv("UPDATE_INTERVAL", "1.0"))
