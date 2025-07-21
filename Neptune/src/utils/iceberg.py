@@ -66,8 +66,6 @@ def get_delivery_table_schema():
         ('order_id', pa.string()),
         ('status', pa.string()),
         ('timestamp', pa.string()),
-        ('start_location', pa.string()),
-        ('end_location', pa.string()),
         ('start_lat', pa.float64()),
         ('start_lon', pa.float64()),
         ('end_lat', pa.float64()),

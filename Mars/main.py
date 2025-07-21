@@ -49,18 +49,12 @@ class Simulator:
 
     def _create_delivery(self) -> PacketDelivery:
         """Generate a random delivery between two NYC locations"""
-        # Location names are irrelevant – using simple placeholders
-        start_location = "origin"
-        end_location = "destination"
-        
         # Create a new delivery
         delivery = PacketDelivery(
             device_id=str(uuid.uuid4()),
             vehicle_id=str(uuid.uuid4()),
             session_id=str(uuid.uuid4()),
-            order_id=str(uuid.uuid4()),
-            start_location=start_location,
-            end_location=end_location
+            order_id=str(uuid.uuid4())
         )
         
         logger.info(

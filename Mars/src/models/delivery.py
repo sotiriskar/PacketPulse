@@ -17,8 +17,6 @@ class PacketDelivery:
     vehicle_id: str
     session_id: str
     order_id: str
-    start_location: str
-    end_location: str
     
     def __post_init__(self):
         # Initialize with random coordinates in NYC area
@@ -77,8 +75,6 @@ class PacketDelivery:
             "order_id": self.order_id,
             "status": self.status,
             "timestamp": datetime.utcnow().isoformat(),
-            "start_location": self.start_location,
-            "end_location": self.end_location,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
             "end_lat": self.end_lat,

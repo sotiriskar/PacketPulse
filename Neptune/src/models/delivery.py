@@ -30,11 +30,7 @@ class DeliveryData(BaseModel):
     end_lon: float = Field(..., description="Ending longitude")
     current_lat: float = Field(..., description="Current latitude")
     current_lon: float = Field(..., description="Current longitude")
-    
-    # Optional fields for additional context
-    start_location: Optional[str] = Field(None, description="Human-readable start location")
-    end_location: Optional[str] = Field(None, description="Human-readable end location")
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -44,8 +40,6 @@ class DeliveryData(BaseModel):
                 "order_id": "453c837d-a915-4488-90ee-8697109c0c4d",
                 "status": "en_route",
                 "timestamp": "2025-07-21T10:29:49.995290",
-                "start_location": "origin",
-                "end_location": "destination",
                 "start_lat": 40.64130557523928,
                 "start_lon": -74.05020129034969,
                 "end_lat": 40.787517656998624,

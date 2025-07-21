@@ -59,7 +59,7 @@ Each delivery record includes:
 - `session_id`: UUID of the current session
 - `order_number`: Sequential order number
 - `timestamp`: UNIX timestamp
-- `current_location`: Current latitude/longitude
-- `start_location`: Starting latitude/longitude
-- `end_location`: Destination latitude/longitude
-- `status`: Current status (not_started, en_route, completed) 
+- `current_lat`, `current_lon`: Current latitude/longitude
+- `start_lat`, `start_lon`: Starting latitude/longitude
+- `end_lat`, `end_lon`: Destination latitude/longitude
+- `status`: Current status (started, en_route, completed) 
