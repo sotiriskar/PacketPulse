@@ -1,13 +1,6 @@
-# ──────────────────────────────────────────────────────────────
-# Jupiter/main.py
-# PyFlink streaming job: Kafka → ClickHouse (Silver layer).
-# Now auto‑creates the ClickHouse sink table so you don’t
-# have to run any manual DDL.
-# ──────────────────────────────────────────────────────────────
-
 import os
 import time
-from clickhouse_driver import Client
+import clickhouse_connect
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import (StreamTableEnvironment, EnvironmentSettings)
 
@@ -19,7 +12,7 @@ from pyflink.table import (StreamTableEnvironment, EnvironmentSettings)
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
 KAFKA_TOPIC     = os.getenv("KAFKA_TOPIC", "sessions-topic")
 CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse")
-CLICKHOUSE_PORT = os.getenv("CLICKHOUSE_PORT", "9000")
+CLICKHOUSE_PORT = os.getenv("CLICKHOUSE_PORT", "8123")
 CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "default")
 CLICKHOUSE_DB   = os.getenv("CLICKHOUSE_DATABASE", "default")
 CLICKHOUSE_TAB  = os.getenv("CLICKHOUSE_TABLE", "session_movements")
@@ -51,8 +44,16 @@ def ensure_clickhouse_table(max_retries: int = 10, delay: int = 2):
 
     for attempt in range(1, max_retries + 1):
         try:
-            client = Client(host=CLICKHOUSE_HOST, port=int(CLICKHOUSE_PORT), user=CLICKHOUSE_USER)
-            client.execute(ddl)
+            # Use clickhouse-connect client
+            client = clickhouse_connect.get_client(
+                host=CLICKHOUSE_HOST,
+                port=int(CLICKHOUSE_PORT),
+                user=CLICKHOUSE_USER,
+                database=CLICKHOUSE_DB
+            )
+            
+            # Execute the DDL
+            client.command(ddl)
             print("✓ ClickHouse table ready →", CLICKHOUSE_TAB)
             return
         except Exception as exc:
@@ -79,24 +80,27 @@ table_env = StreamTableEnvironment.create(exec_env, environment_settings=env_set
 
 source_ddl = f"""
 CREATE TABLE kafka_sessions (
-    session_id   STRING,
+    device_id    STRING,
     vehicle_id   STRING,
+    session_id   STRING,
     order_id     STRING,
     status       STRING,
-    event_time   TIMESTAMP_LTZ(3),
+    `timestamp`  STRING,
+    start_location STRING,
+    end_location   STRING,
     start_lat    DOUBLE,
     start_lon    DOUBLE,
     end_lat      DOUBLE,
     end_lon      DOUBLE,
     current_lat  DOUBLE,
     current_lon  DOUBLE,
+    event_time   AS TO_TIMESTAMP_LTZ(CAST(UNIX_TIMESTAMP(REPLACE(`timestamp`, 'T', ' ')) * 1000 AS BIGINT), 3),
     WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
 ) WITH (
     'connector' = 'kafka',
     'topic' = '{KAFKA_TOPIC}',
     'properties.bootstrap.servers' = '{KAFKA_BOOTSTRAP}',
     'format' = 'json',
-    'json.timestamp-format.standard' = 'ISO-8601',
     'scan.startup.mode' = 'earliest-offset'
 )
 """
@@ -115,14 +119,11 @@ CREATE TABLE clickhouse_sessions (
     current_lat   DOUBLE,
     current_lon   DOUBLE
 ) WITH (
-    'connector' = 'jdbc',
-    'url' = '{CLICKHOUSE_URL}',
-    'table-name' = '{CLICKHOUSE_TAB}',
-    'driver' = 'com.clickhouse.jdbc.ClickHouseDriver',
-    'username' = '{CLICKHOUSE_USER}',
-    'sink.buffer-flush.max-rows' = '500',
-    'sink.buffer-flush.interval' = '2s',
-    'sink.parallelism' = '2'
+    'connector' = 'filesystem',
+    'path' = '/tmp/sessions-data',
+    'format' = 'json',
+    'sink.rolling-policy.file-size' = '1MB',
+    'sink.rolling-policy.rollover-interval' = '1min'
 )
 """
 
@@ -148,8 +149,17 @@ FROM kafka_sessions
 # ---------------------------------------------------------------------------
 
 table_env.execute_sql(source_ddl)
+print("✅ Kafka source table created")
+
 table_env.execute_sql(sink_ddl)
+print("✅ Filesystem sink table created")
 
-table_env.execute_sql(insert_sql)
+# Create a statement set and add the insert statement
+stmt_set = table_env.create_statement_set()
+stmt_set.add_insert_sql(insert_sql)
+print("✅ Insert statement added to statement set")
 
-table_env.execute("JupiterKafkaToClickHouse")
+# Execute the statement set
+print("🚀 Starting streaming job...")
+stmt_set.execute().wait()
+print("✅ Streaming job completed")

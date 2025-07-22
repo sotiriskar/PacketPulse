@@ -119,6 +119,11 @@ services:
     container_name: clickhouse
     ports:
       - "8123:8123"
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     networks:
       - packetpulse_network
     healthcheck:

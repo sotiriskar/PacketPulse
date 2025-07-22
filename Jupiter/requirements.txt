@@ -1,2 +1,2 @@
 apache-flink==1.20.2
-clickhouse-driver>=0.2.2
+clickhouse-connect>=0.8.18
