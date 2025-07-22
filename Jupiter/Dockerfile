@@ -44,4 +44,4 @@ WORKDIR /usr/src/app
 COPY Jupiter/main.py ./main.py
 
 # ---------- entrypoint ----------
-CMD start-cluster.sh && sleep 5 && python main.py
+CMD start-cluster.sh & sleep 10 && python main.py
