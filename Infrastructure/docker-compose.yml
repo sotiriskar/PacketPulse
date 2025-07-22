@@ -179,6 +179,23 @@ services:
     networks:
       - packetpulse_network
 
+  jupiter:
+    build:
+      context: ..
+      dockerfile: Jupiter/Dockerfile
+    container_name: jupiter
+    depends_on:
+      - kafka
+      - clickhouse
+    ports:
+      - "8081:8081"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CLICKHOUSE_HOST: clickhouse
+      FLINK_PARALLELISM: 4
+    networks:
+      - packetpulse_network
+
 networks:
   packetpulse_network:
     driver: bridge
