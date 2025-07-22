@@ -36,6 +36,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 #  Application code
 WORKDIR /usr/src/app
 COPY Jupiter/main.py ./main.py
+COPY Jupiter/src ./src
 
 #  Entrypoint
 CMD start-cluster.sh & sleep 3 && python main.py

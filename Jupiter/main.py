@@ -1,229 +1,116 @@
-# Jupiter/main.py
-import os
-import time
-import json
-import logging
-import clickhouse_connect
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.common.serialization import SimpleStringSchema
 from pyflink.datastream.connectors import FlinkKafkaConsumer
-from pyflink.datastream.functions import MapFunction
+from src.utils.clickhouse import ClickHouseManager
+from src.utils.sink import ClickHouseSink
+from src.config.settings import (
+    KAFKA_BOOTSTRAP, KAFKA_TOPIC, KAFKA_CONSUMER_GROUP,
+    FLINK_PARALLELISM, FLINK_JOB_NAME, LOG_LEVEL, LOG_FORMAT
+)
+import logging
 
-# ---------------------------------------------------------------------------
-# Configuration – override with env vars if you like
-# ---------------------------------------------------------------------------
-
-KAFKA_BOOTSTRAP   = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
-KAFKA_TOPIC       = os.getenv("KAFKA_TOPIC", "sessions-topic")
-
-CLICKHOUSE_HOST   = os.getenv("CLICKHOUSE_HOST", "clickhouse")
-CLICKHOUSE_PORT   = os.getenv("CLICKHOUSE_PORT", "8123")
-CLICKHOUSE_USER   = os.getenv("CLICKHOUSE_USER", "default")
-CLICKHOUSE_DB     = os.getenv("CLICKHOUSE_DATABASE", "default")
-
-TAB_MOVEMENTS     = os.getenv("CLICKHOUSE_TABLE_MOVEMENTS", "session_movements")
-TAB_EVENTS        = os.getenv("CLICKHOUSE_TABLE_EVENTS",    "session_events")
-TAB_BASE          = os.getenv("CLICKHOUSE_TABLE_BASE",      "sessions_base")
-
-
-# Configure logging
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Helper: create ALL three tables if they don't exist yet
-# ---------------------------------------------------------------------------
-def ensure_clickhouse_tables(max_retries: int = 10, delay: int = 2):
-    ddl_statements = [
 
-        # 1️⃣ immutable session header ------------------------------
-        f"""
-        CREATE TABLE IF NOT EXISTS {TAB_BASE} (
-          session_id    String,
-          vehicle_id    String,
-          order_id      String,
-          event_started DateTime64(3),
-          start_lat     Float64,
-          start_lon     Float64,
-          end_lat       Float64,
-          end_lon       Float64
-        )
-        ENGINE = MergeTree
-        PARTITION BY toYYYYMM(event_started)
-        ORDER BY session_id
-        """,
-
-        # 2️⃣ every status change -----------------------------------
-        f"""
-        CREATE TABLE IF NOT EXISTS {TAB_EVENTS} (
-          session_id String,
-          event_time DateTime64(3),
-          status     String
-        )
-        ENGINE = ReplacingMergeTree(event_time)
-        PARTITION BY toYYYYMM(event_time)
-        ORDER BY (session_id, event_time)
-        """,
-
-        # 3️⃣ every GPS ping ----------------------------------------
-        f"""
-        CREATE TABLE IF NOT EXISTS {TAB_MOVEMENTS} (
-          session_id   String,
-          vehicle_id   String,
-          order_id     String,
-          status       String,
-          event_time   DateTime64(3),
-          start_lat    Float64,
-          start_lon    Float64,
-          end_lat      Float64,
-          end_lon      Float64,
-          current_lat  Float64,
-          current_lon  Float64
-        )
-        ENGINE = MergeTree
-        PARTITION BY toYYYYMM(event_time)
-        ORDER BY (session_id, event_time)
-        """
-    ]
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            logger.info(f"[{attempt}/{max_retries}] Attempting to connect to ClickHouse at {CLICKHOUSE_HOST}:{CLICKHOUSE_PORT}...")
-            client = clickhouse_connect.get_client(
-                host=CLICKHOUSE_HOST,
-                port=int(CLICKHOUSE_PORT),
-                user=CLICKHOUSE_USER,
-                database=CLICKHOUSE_DB
-            )
-            logger.info(f"[{attempt}/{max_retries}] Successfully connected to ClickHouse!")
-            
-            for i, ddl in enumerate(ddl_statements, 1):
-                logger.info(f"[{attempt}/{max_retries}] Creating table {i}/3...")
-                client.command(ddl)
-                logger.info(f"[{attempt}/{max_retries}] Table {i}/3 created successfully!")
-            
-            logger.info("✅ ClickHouse tables ready.")
-            return
-        except Exception as exc:
-            logger.error(f"[{attempt}/{max_retries}] ClickHouse not ready – {exc}")
-            if attempt < max_retries:
-                logger.info(f"Waiting {delay} seconds before retry...")
-                time.sleep(delay)
-            else:
-                logger.error("❌ Failed to create ClickHouse tables after all retries")
-                raise
-
-# Run table creation before Flink starts
-logger.info("🚀 Starting Jupiter service...")
-ensure_clickhouse_tables()
-
-# ---------------------------------------------------------------------------
-# Sink function: one record ➔ three inserts
-# ---------------------------------------------------------------------------
-class ClickHouseSink(MapFunction):
+class JupiterService:
+    """Main Jupiter service that orchestrates the Flink job and ClickHouse operations"""
+    
     def __init__(self):
-        pass
-
-    def open(self, runtime_context):
-        logger.info("🔧 Initializing ClickHouse client...")
-        self.client = clickhouse_connect.get_client(
-            host=CLICKHOUSE_HOST,
-            port=int(CLICKHOUSE_PORT),
-            user=CLICKHOUSE_USER,
-            database=CLICKHOUSE_DB
+        self.clickhouse_manager = ClickHouseManager()
+        self.env = None
+        self.kafka_consumer = None
+        self.stream = None
+    
+    def setup_logging(self):
+        """Configure logging for the service"""
+        logging.basicConfig(
+            level=LOG_LEVEL,
+            format=LOG_FORMAT
         )
-        # track which sessions we've already stored in sessions_base
-        self.seen_sessions = set()
-        logger.info("✅ ClickHouse client initialised")
-
-    def map(self, record):
-        # raw Kafka message → dict
-        data = json.loads(record) if isinstance(record, str) else record
-
-        # handy shortcuts
-        sid   = data.get('session_id', '')
-        vid   = data.get('vehicle_id', '')
-        oid   = data.get('order_id', '')
-        stat  = data.get('status', '')
-        ts_iso = data.get('timestamp', '')          # e.g. "2025-07-21T18:30:15.734790"
-        # ClickHouse likes 'YYYY‑MM‑DD HH:MM:SS.mmm'
-        ts_sql = ts_iso.replace('T', ' ')[:26]      # trim to microseconds
-
-        # ------------------------------------------------------------------
-        # 1️⃣  sessions_base (first message only, usually status='started')
-        # ------------------------------------------------------------------
-        if sid and sid not in self.seen_sessions and stat == 'started':
-            base_row = [(
-                sid,
-                vid,
-                oid,
-                ts_sql,
-                float(data.get('start_lat', 0)),
-                float(data.get('start_lon', 0)),
-                float(data.get('end_lat', 0)),
-                float(data.get('end_lon', 0))
-            )]
-            try:
-                self.client.insert(TAB_BASE, base_row)
-                self.seen_sessions.add(sid)
-                logger.info(f"➕ sessions_base row inserted for {sid}")
-            except Exception as e:
-                logger.error(f"⚠️  sessions_base insert failed: {e}")
-
-        # ------------------------------------------------------------------
-        # 2️⃣  session_events (every message)
-        # ------------------------------------------------------------------
-        event_row = [(sid, ts_sql, stat)]
+        logger.info("🚀 Starting Jupiter service...")
+    
+    def ensure_clickhouse_tables(self):
+        """Ensure ClickHouse tables are created before starting Flink"""
+        logger.info("🔧 Ensuring ClickHouse tables exist...")
+        if not self.clickhouse_manager.ensure_tables():
+            raise RuntimeError("Failed to create ClickHouse tables")
+        logger.info("✅ ClickHouse tables ready")
+    
+    def setup_flink_environment(self):
+        """Set up the Flink execution environment"""
+        logger.info("🔧 Setting up Flink environment...")
+        self.env = StreamExecutionEnvironment.get_execution_environment()
+        self.env.set_parallelism(FLINK_PARALLELISM)
+        logger.info(f"✅ Flink environment configured with parallelism {FLINK_PARALLELISM}")
+    
+    def setup_kafka_consumer(self):
+        """Set up the Kafka consumer for Flink"""
+        logger.info("🔧 Creating Kafka consumer...")
+        self.kafka_consumer = FlinkKafkaConsumer(
+            topics=KAFKA_TOPIC,
+            deserialization_schema=SimpleStringSchema(),
+            properties={
+                'bootstrap.servers': KAFKA_BOOTSTRAP,
+                'group.id': KAFKA_CONSUMER_GROUP
+            }
+        )
+        logger.info(f"✅ Kafka consumer configured for topic: {KAFKA_TOPIC}")
+    
+    def setup_data_stream(self):
+        """Set up the Flink data stream with the ClickHouse sink"""
+        logger.info("🔧 Setting up data stream...")
+        self.stream = self.env.add_source(self.kafka_consumer)
+        self.stream.map(ClickHouseSink()).name("clickhouse-sink")
+        logger.info("✅ Data stream configured with ClickHouse sink")
+    
+    def start(self):
+        """Start the Jupiter service"""
         try:
-            self.client.insert(TAB_EVENTS, event_row)
+            # Setup logging
+            self.setup_logging()
+            
+            # Ensure ClickHouse tables exist
+            self.ensure_clickhouse_tables()
+            
+            # Setup Flink environment
+            self.setup_flink_environment()
+            
+            # Setup Kafka consumer
+            self.setup_kafka_consumer()
+            
+            # Setup data stream
+            self.setup_data_stream()
+            
+            # Execute the Flink job
+            logger.info(f"🚀 Launching Flink job ({FLINK_JOB_NAME})...")
+            self.env.execute(FLINK_JOB_NAME)
+            
         except Exception as e:
-            logger.error(f"⚠️  session_events insert failed: {e}")
+            logger.error(f"❌ Failed to start Jupiter service: {e}")
+            raise
+    
+    def stop(self):
+        """Stop the Jupiter service"""
+        logger.info("🛑 Stopping Jupiter service...")
+        if self.clickhouse_manager:
+            self.clickhouse_manager.close()
+        logger.info("✅ Jupiter service stopped")
 
-        # ------------------------------------------------------------------
-        # 3️⃣  session_movements (every message)
-        # ------------------------------------------------------------------
-        movement_row = [(
-            sid,
-            vid,
-            oid,
-            stat,
-            ts_sql,
-            float(data.get('start_lat', 0)),
-            float(data.get('start_lon', 0)),
-            float(data.get('end_lat', 0)),
-            float(data.get('end_lon', 0)),
-            float(data.get('current_lat', 0)),
-            float(data.get('current_lon', 0))
-        )]
-        try:
-            self.client.insert(TAB_MOVEMENTS, movement_row)
-        except Exception as e:
-            logger.error(f"⚠️  session_movements insert failed: {e}")
 
-        # hand the record downstream if needed
-        return record
+def main():
+    """Main entry point for the Jupiter service"""
+    service = JupiterService()
+    
+    try:
+        service.start()
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal, shutting down...")
+    except Exception as e:
+        logger.error(f"Service failed: {e}")
+        raise
+    finally:
+        service.stop()
 
-# ---------------------------------------------------------------------------
-# Flink job definition
-# ---------------------------------------------------------------------------
-logger.info("🔧 Setting up Flink environment...")
-env = StreamExecutionEnvironment.get_execution_environment()
-env.set_parallelism(1)                     # tweak for prod
 
-logger.info("🔧 Creating Kafka consumer...")
-kafka_consumer = FlinkKafkaConsumer(
-    topics=KAFKA_TOPIC,
-    deserialization_schema=SimpleStringSchema(),
-    properties={
-        'bootstrap.servers': KAFKA_BOOTSTRAP,
-        'group.id': 'jupiter-consumer-group'
-    }
-)
-
-logger.info("🔧 Setting up data stream...")
-stream = env.add_source(kafka_consumer)
-stream.map(ClickHouseSink()).name("clickhouse-sink")
-
-logger.info("🚀 Launching Flink job (Jupiter‑ClickHouse‑Pipeline)…")
-env.execute("Jupiter-ClickHouse-Pipeline")
+if __name__ == "__main__":
+    main() 
