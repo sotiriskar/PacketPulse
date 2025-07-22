@@ -1,0 +1,4 @@
+setuptools>=65.0.0
+wheel>=0.38.0
+apache-flink==1.19.0
+clickhouse-driver>=0.2.2
