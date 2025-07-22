@@ -7,8 +7,28 @@ models:
     columns:
       - name: session_id
         description: "Unique identifier for the session"
+      - name: vehicle_id
+        description: "Unique identifier for the vehicle"
+      - name: order_id
+        description: "Unique identifier for the order"
+      - name: order_status
+        description: "Current status of the order"
       - name: start_time
         description: "Timestamp when the session started"
+      - name: last_update_time
+        description: "Timestamp of the latest movement update"
+      - name: current_lat
+        description: "Current latitude of the vehicle"
+      - name: current_lon
+        description: "Current longitude of the vehicle"
+      - name: distance_to_destination_km
+        description: "Remaining distance to destination in kilometers"
+      - name: elapsed_time
+        description: "Time elapsed since session start (HH:MM:SS format)"
+      - name: avg_speed_kmh
+        description: "Average speed in kilometers per hour"
+      - name: eta
+        description: "Estimated time to arrival (HH:MM:SS format)"
 
   - name: session_summary
     description: "Summary statistics for completed delivery sessions"
@@ -19,14 +39,30 @@ models:
         description: "Timestamp when the session started"
       - name: end_time
         description: "Timestamp when the session ended"
+      - name: duration_seconds
+        description: "Total duration of the session in seconds"
+      - name: total_distance_km
+        description: "Total distance traveled in kilometers"
+      - name: avg_speed_kmh
+        description: "Average speed during the session in kilometers per hour"
 
   - name: kpi_aggregates
     description: "Aggregated KPIs by time period (daily, weekly, monthly)"
     columns:
       - name: period_start
         description: "Start of the aggregation period"
+      - name: period_end
+        description: "End of the aggregation period"
       - name: period_type
         description: "Type of period (day, week, month)"
+      - name: sessions_completed
+        description: "Number of sessions completed in the period"
+      - name: avg_duration_sec
+        description: "Average session duration in seconds"
+      - name: total_distance_km
+        description: "Total distance traveled in kilometers"
+      - name: avg_speed_kmh
+        description: "Average speed across all sessions in kilometers per hour"
 
   - name: vehicle_fleet
     description: "Fleet management view with vehicle statistics and performance metrics"
@@ -35,3 +71,11 @@ models:
         description: "Unique identifier for the vehicle"
       - name: first_seen
         description: "Timestamp when the vehicle was first observed"
+      - name: last_active_time
+        description: "Timestamp of the last activity for this vehicle"
+      - name: active_sessions
+        description: "Number of active sessions for this vehicle"
+      - name: completed_trips
+        description: "Number of completed trips for this vehicle"
+      - name: trips_per_day
+        description: "Average trips completed per day"
