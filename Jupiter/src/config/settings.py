@@ -13,9 +13,13 @@ CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "default")
 CLICKHOUSE_DB = os.getenv("CLICKHOUSE_DATABASE", "default")
 
 # ClickHouse Table Names
+TAB_SESSIONS = os.getenv("CLICKHOUSE_TABLE_SESSIONS", "sessions")
+TAB_ORDERS = os.getenv("CLICKHOUSE_TABLE_ORDERS", "orders")
+TAB_ORDER_EVENTS = os.getenv("CLICKHOUSE_TABLE_ORDER_EVENTS", "order_events")
 TAB_MOVEMENTS = os.getenv("CLICKHOUSE_TABLE_MOVEMENTS", "session_movements")
-TAB_EVENTS = os.getenv("CLICKHOUSE_TABLE_EVENTS", "session_events")
-TAB_BASE = os.getenv("CLICKHOUSE_TABLE_BASE", "sessions_base")
+TAB_VEHICLES = os.getenv("CLICKHOUSE_TABLE_VEHICLES", "vehicles")
+TAB_VEHICLE_STATUS = os.getenv("CLICKHOUSE_TABLE_VEHICLE_STATUS", "vehicle_status")
+TAB_VEHICLE_MOVEMENTS = os.getenv("CLICKHOUSE_TABLE_VEHICLE_MOVEMENTS", "vehicle_movements")
 
 # Flink Configuration
 FLINK_PARALLELISM = int(os.getenv("FLINK_PARALLELISM", "1"))

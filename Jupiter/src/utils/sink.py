@@ -38,29 +38,36 @@ class ClickHouseSink(MapFunction):
         start_lat, start_lon, end_lat, end_lon, current_lat, current_lon = DataProcessor.extract_location_data(data)
         
         # ------------------------------------------------------------------
-        # 1️⃣  sessions_base (first message only, usually status='started')
+        # 1️⃣  vehicles (every message with vehicle_id)
+        # ------------------------------------------------------------------
+        if vehicle_id:
+            vehicle_row = [DataProcessor.create_vehicle_row(vehicle_id, timestamp)]
+            self.clickhouse_manager.insert_vehicles(vehicle_row)
+        
+        # ------------------------------------------------------------------
+        # 2️⃣  sessions (first message only, usually status='started')
         # ------------------------------------------------------------------
         if session_id and session_id not in self.seen_sessions and status == 'started':
-            base_row = [DataProcessor.create_base_session_row(
+            session_row = [DataProcessor.create_session_row(
                 session_id, vehicle_id, order_id, timestamp, start_lat, start_lon, end_lat, end_lon
             )]
             
-            if self.clickhouse_manager.insert_base_session(base_row):
+            if self.clickhouse_manager.insert_sessions(session_row):
                 self.seen_sessions.add(session_id)
-                logger.info(f"➕ sessions_base row inserted for {session_id}")
+                logger.info(f"➕ sessions row inserted for {session_id}")
         
         # ------------------------------------------------------------------
-        # 2️⃣  session_events (every message)
+        # 3️⃣  orders (only when completed)
         # ------------------------------------------------------------------
-        event_row = [DataProcessor.create_event_row(session_id, timestamp, status)]
-        self.clickhouse_manager.insert_session_event(event_row)
+        if order_id and status in ['delivered', 'completed', 'finished']:
+            order_row = [DataProcessor.create_order_row(order_id, status, timestamp)]
+            self.clickhouse_manager.insert_orders(order_row)
         
         # ------------------------------------------------------------------
-        # 3️⃣  session_movements (every message)
+        # 4️⃣  session_movements (every message)
         # ------------------------------------------------------------------
         movement_row = [DataProcessor.create_movement_row(
-            session_id, vehicle_id, order_id, status, timestamp,
-            start_lat, start_lon, end_lat, end_lon, current_lat, current_lon
+            session_id, status, timestamp, current_lat, current_lon
         )]
         self.clickhouse_manager.insert_session_movement(movement_row)
         

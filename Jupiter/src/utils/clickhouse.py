@@ -1,6 +1,6 @@
 from src.config.settings import (
     CLICKHOUSE_HOST, CLICKHOUSE_PORT, CLICKHOUSE_USER, CLICKHOUSE_DB,
-    TAB_BASE, TAB_EVENTS, TAB_MOVEMENTS, MAX_RETRIES, RETRY_DELAY
+    TAB_SESSIONS, TAB_ORDERS, TAB_MOVEMENTS, TAB_VEHICLES, MAX_RETRIES, RETRY_DELAY
 )
 from typing import List, Any, Tuple
 import clickhouse_connect
@@ -17,9 +17,19 @@ class ClickHouseManager:
     def __init__(self):
         self.client = None
         self._ddl_statements = [
-            # 1️⃣ immutable session header
+            # 1️⃣ vehicles table
             f"""
-            CREATE TABLE IF NOT EXISTS {TAB_BASE} (
+            CREATE TABLE IF NOT EXISTS {TAB_VEHICLES} (
+              vehicle_id String,
+              first_seen DateTime64(3)
+            )
+            ENGINE = MergeTree
+            ORDER BY vehicle_id
+            """,
+
+            # 2️⃣ sessions table
+            f"""
+            CREATE TABLE IF NOT EXISTS {TAB_SESSIONS} (
               session_id    String,
               vehicle_id    String,
               order_id      String,
@@ -34,36 +44,31 @@ class ClickHouseManager:
             ORDER BY session_id
             """,
 
-            # 2️⃣ every status change
+            # 3️⃣ orders table (completed orders only)
             f"""
-            CREATE TABLE IF NOT EXISTS {TAB_EVENTS} (
-              session_id String,
-              event_time DateTime64(3),
-              status     String
-            )
-            ENGINE = ReplacingMergeTree(event_time)
-            PARTITION BY toYYYYMM(event_time)
-            ORDER BY (session_id, event_time)
-            """,
-
-            # 3️⃣ every GPS ping
-            f"""
-            CREATE TABLE IF NOT EXISTS {TAB_MOVEMENTS} (
-              session_id   String,
-              vehicle_id   String,
+            CREATE TABLE IF NOT EXISTS {TAB_ORDERS} (
               order_id     String,
               status       String,
-              event_time   DateTime64(3),
-              start_lat    Float64,
-              start_lon    Float64,
-              end_lat      Float64,
-              end_lon      Float64,
-              current_lat  Float64,
-              current_lon  Float64
+              completed_at DateTime64(3)
             )
             ENGINE = MergeTree
-            PARTITION BY toYYYYMM(event_time)
-            ORDER BY (session_id, event_time)
+            PARTITION BY toYYYYMM(completed_at)
+            ORDER BY order_id
+            """,
+
+            # 4️⃣ session movements table
+            f"""
+            CREATE TABLE IF NOT EXISTS {TAB_MOVEMENTS} (
+              id          UUID,
+              session_id  String,
+              status      String,
+              event_tsp   DateTime64(3),
+              current_lon Float64,
+              current_lat Float64
+            )
+            ENGINE = MergeTree
+            PARTITION BY toYYYYMM(event_tsp)
+            ORDER BY (session_id, event_tsp)
             """
         ]
     
@@ -108,22 +113,31 @@ class ClickHouseManager:
                     logger.error("❌ Failed to create ClickHouse tables after all retries")
                     return False
     
-    def insert_base_session(self, data: List[Tuple[Any, ...]]) -> bool:
-        """Insert session base data"""
+    def insert_vehicles(self, data: List[Tuple[Any, ...]]) -> bool:
+        """Insert vehicle data"""
         try:
-            self.client.insert(TAB_BASE, data)
+            self.client.insert(TAB_VEHICLES, data)
             return True
         except Exception as e:
-            logger.error(f"⚠️  sessions_base insert failed: {e}")
+            logger.error(f"⚠️  vehicles insert failed: {e}")
+            return False
+
+    def insert_sessions(self, data: List[Tuple[Any, ...]]) -> bool:
+        """Insert session data"""
+        try:
+            self.client.insert(TAB_SESSIONS, data)
+            return True
+        except Exception as e:
+            logger.error(f"⚠️  sessions insert failed: {e}")
             return False
     
-    def insert_session_event(self, data: List[Tuple[Any, ...]]) -> bool:
-        """Insert session event data"""
+    def insert_orders(self, data: List[Tuple[Any, ...]]) -> bool:
+        """Insert order data"""
         try:
-            self.client.insert(TAB_EVENTS, data)
+            self.client.insert(TAB_ORDERS, data)
             return True
         except Exception as e:
-            logger.error(f"⚠️  session_events insert failed: {e}")
+            logger.error(f"⚠️  orders insert failed: {e}")
             return False
     
     def insert_session_movement(self, data: List[Tuple[Any, ...]]) -> bool:

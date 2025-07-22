@@ -1,6 +1,7 @@
 from typing import Dict, Any, Tuple
 import logging
 import json
+import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -48,10 +49,15 @@ class DataProcessor:
         )
     
     @staticmethod
-    def create_base_session_row(session_id: str, vehicle_id: str, order_id: str, 
-                              timestamp: str, start_lat: float, start_lon: float,
-                              end_lat: float, end_lon: float) -> Tuple[Any, ...]:
-        """Create row data for sessions_base table"""
+    def create_vehicle_row(vehicle_id: str, first_seen: str) -> Tuple[Any, ...]:
+        """Create row data for vehicles table"""
+        return (vehicle_id, DataProcessor.format_timestamp(first_seen))
+    
+    @staticmethod
+    def create_session_row(session_id: str, vehicle_id: str, order_id: str, 
+                          timestamp: str, start_lat: float, start_lon: float,
+                          end_lat: float, end_lon: float) -> Tuple[Any, ...]:
+        """Create row data for sessions table"""
         return (
             session_id,
             vehicle_id,
@@ -64,29 +70,23 @@ class DataProcessor:
         )
     
     @staticmethod
-    def create_event_row(session_id: str, timestamp: str, status: str) -> Tuple[Any, ...]:
-        """Create row data for session_events table"""
+    def create_order_row(order_id: str, status: str, completed_at: str) -> Tuple[Any, ...]:
+        """Create row data for orders table (completed orders only)"""
         return (
-            session_id,
-            DataProcessor.format_timestamp(timestamp),
-            status
+            order_id,
+            status,
+            DataProcessor.format_timestamp(completed_at)
         )
     
     @staticmethod
-    def create_movement_row(session_id: str, vehicle_id: str, order_id: str,
-                           status: str, timestamp: str, start_lat: float, start_lon: float,
-                           end_lat: float, end_lon: float, current_lat: float, current_lon: float) -> Tuple[Any, ...]:
+    def create_movement_row(session_id: str, status: str, timestamp: str, 
+                           current_lat: float, current_lon: float) -> Tuple[Any, ...]:
         """Create row data for session_movements table"""
         return (
+            str(uuid.uuid4()),  # Generate UUID for the movement record
             session_id,
-            vehicle_id,
-            order_id,
             status,
             DataProcessor.format_timestamp(timestamp),
-            start_lat,
-            start_lon,
-            end_lat,
-            end_lon,
-            current_lat,
-            current_lon
+            current_lon,
+            current_lat
         ) 

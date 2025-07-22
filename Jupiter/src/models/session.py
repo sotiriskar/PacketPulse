@@ -1,4 +1,6 @@
 from pydantic import BaseModel, ConfigDict
+from typing import Optional
+import uuid
 
 
 class SessionData(BaseModel):
@@ -40,8 +42,14 @@ class SessionData(BaseModel):
     )
 
 
-class SessionBase(BaseModel):
-    """Model for session base data (immutable session header)"""
+class Vehicle(BaseModel):
+    """Model for vehicle data"""
+    vehicle_id: str
+    first_seen: str  # DateTime64(3) format
+
+
+class Session(BaseModel):
+    """Model for session data (immutable session header)"""
     session_id: str
     vehicle_id: str
     order_id: str
@@ -52,23 +60,18 @@ class SessionBase(BaseModel):
     end_lon: float
 
 
-class SessionEvent(BaseModel):
-    """Model for session event data (status changes)"""
-    session_id: str
-    event_time: str  # DateTime64(3) format
+class Order(BaseModel):
+    """Model for order data (completed orders only)"""
+    order_id: str
     status: str
+    completed_at: str  # DateTime64(3) format
 
 
 class SessionMovement(BaseModel):
     """Model for session movement data (GPS pings)"""
+    id: str = str(uuid.uuid4())  # Auto-generated UUID
     session_id: str
-    vehicle_id: str
-    order_id: str
     status: str
-    event_time: str  # DateTime64(3) format
-    start_lat: float
-    start_lon: float
-    end_lat: float
-    end_lon: float
-    current_lat: float
-    current_lon: float 
+    event_tsp: str  # DateTime64(3) format
+    current_lon: float
+    current_lat: float 
