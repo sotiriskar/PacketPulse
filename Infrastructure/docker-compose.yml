@@ -190,9 +190,11 @@ services:
     ports:
       - "8081:8081"
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      CLICKHOUSE_HOST: clickhouse
-      FLINK_PARALLELISM: 4
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - CLICKHOUSE_HOST=clickhouse
+      - FLINK_PARALLELISM=4
+      - KAFKA_TOPIC=sessions
+      - CLICKHOUSE_DB=default
     networks:
       - packetpulse_network
 
