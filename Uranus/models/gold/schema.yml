@@ -1,0 +1,37 @@
+
+version: 2
+
+models:
+  - name: active_sessions
+    description: "Active delivery sessions with real-time location and ETA information"
+    columns:
+      - name: session_id
+        description: "Unique identifier for the session"
+      - name: start_time
+        description: "Timestamp when the session started"
+
+  - name: session_summary
+    description: "Summary statistics for completed delivery sessions"
+    columns:
+      - name: session_id
+        description: "Unique identifier for the session"
+      - name: start_time
+        description: "Timestamp when the session started"
+      - name: end_time
+        description: "Timestamp when the session ended"
+
+  - name: kpi_aggregates
+    description: "Aggregated KPIs by time period (daily, weekly, monthly)"
+    columns:
+      - name: period_start
+        description: "Start of the aggregation period"
+      - name: period_type
+        description: "Type of period (day, week, month)"
+
+  - name: vehicle_fleet
+    description: "Fleet management view with vehicle statistics and performance metrics"
+    columns:
+      - name: vehicle_id
+        description: "Unique identifier for the vehicle"
+      - name: first_seen
+        description: "Timestamp when the vehicle was first observed"

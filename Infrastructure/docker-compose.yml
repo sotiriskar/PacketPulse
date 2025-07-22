@@ -203,6 +203,18 @@ services:
     networks:
       - packetpulse_network
 
+  uranus:
+    build:
+      context: ..
+      dockerfile: Uranus/Dockerfile
+    container_name: uranus
+    depends_on:
+      - clickhouse
+    environment:
+      - DBT_PROFILES_DIR=/app
+    networks:
+      - packetpulse_network
+
 networks:
   packetpulse_network:
     driver: bridge
