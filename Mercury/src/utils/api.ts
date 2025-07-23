@@ -48,14 +48,24 @@ export class ApiService {
     return this.request('/sessions');
   }
 
+  // Get recent sessions for the table
+  static async getRecentSessions(): Promise<ApiResponse<unknown[]>> {
+    return this.request('/sessions/recent');
+  }
+
   // Get session by ID
   static async getSession(id: string): Promise<ApiResponse<unknown>> {
     return this.request(`/sessions/${id}`);
   }
 
-  // Get session statistics
-  static async getSessionStats(): Promise<ApiResponse<unknown>> {
-    return this.request('/stats');
+  // Get trends data (today vs yesterday)
+  static async getTrends(): Promise<ApiResponse<unknown>> {
+    return this.request('/trends');
+  }
+
+  // Get chart data
+  static async getChartData(): Promise<ApiResponse<unknown>> {
+    return this.request('/charts');
   }
 
   // Get vehicle data

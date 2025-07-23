@@ -5,19 +5,29 @@ const CLICKHOUSE_URL = process.env.CLICKHOUSE_HOST || 'http://localhost:8123';
 export async function GET() {
   try {
     const query = `
-      SELECT 
-        session_id,
-        vehicle_id,
-        order_id,
-        order_status,
-        start_time,
-        last_update_time,
-        distance_to_destination_km,
-        elapsed_time,
-        avg_speed_kmh,
-        eta
-      FROM active_sessions
-      ORDER BY last_update_time DESC
+      WITH latest_movement AS (
+        SELECT
+          session_id,
+          status,
+          event_tsp   AS latest_activity,
+          ROW_NUMBER() OVER (
+            PARTITION BY session_id
+            ORDER BY event_tsp DESC
+          )             AS rn
+        FROM session_movements
+      )
+      SELECT
+        lm.session_id,
+        lm.status,
+        lm.latest_activity,
+        s.vehicle_id,
+        s.order_id
+      FROM latest_movement lm
+      JOIN sessions s
+        ON s.session_id = lm.session_id
+      WHERE lm.rn = 1
+      ORDER BY lm.latest_activity DESC
+      LIMIT 5
       FORMAT TSVWithNames
     `;
     
@@ -55,27 +65,9 @@ export async function GET() {
     const parsedData = parseClickHouseResponse(data);
     return NextResponse.json(parsedData);
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    console.error('Error fetching recent sessions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch sessions' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    
-    // For now, just return success since we're not creating sessions via API
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Session creation not implemented yet' 
-    });
-  } catch (error) {
-    console.error('Error creating session:', error);
-    return NextResponse.json(
-      { error: 'Failed to create session' },
+      { error: 'Failed to fetch recent sessions' },
       { status: 500 }
     );
   }
