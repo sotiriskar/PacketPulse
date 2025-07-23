@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   AppBar,
@@ -9,9 +9,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import {
-  Refresh,
-} from '@mui/icons-material';
+
 import { ApiService } from '@/utils/api';
 import Sidebar from '@/components/Sidebar';
 import Overview from '@/components/Overview';
@@ -53,20 +51,37 @@ export default function Dashboard() {
     total_fleet: 0,
     total_distance: 0
   });
+  const [chartData, setChartData] = useState({
+    distanceData: [],
+    sessionData: []
+  });
+  const [trends, setTrends] = useState({
+    today: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 },
+    yesterday: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState('overview');
   const [healthStatus, setHealthStatus] = useState<'connected' | 'disconnected'>('connected');
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
-      // Fetch trends from API (includes today's stats)
-      const trendsResponse = await ApiService.getTrends();
+      // Fetch all data in parallel
+      const [trendsResponse, sessionsResponse, chartsResponse] = await Promise.all([
+        ApiService.getTrends(),
+        ApiService.getRecentSessions(),
+        fetch('/api/charts').then(res => res.json())
+      ]);
+      
+      // Update trends data
       if (trendsResponse.success && trendsResponse.data) {
         const trendsData = trendsResponse.data as any;
+        setTrends(trendsData);
         setStats(trendsData.today || {
           total_sessions: 0,
           total_orders: 0,
@@ -75,6 +90,10 @@ export default function Dashboard() {
         });
       } else {
         // Show empty stats when API is down
+        setTrends({
+          today: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 },
+          yesterday: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 }
+        });
         setStats({
           total_sessions: 0,
           total_orders: 0,
@@ -83,18 +102,28 @@ export default function Dashboard() {
         });
       }
       
-      // Fetch recent sessions from API
-      const sessionsResponse = await ApiService.getRecentSessions();
+      // Update sessions data
       if (sessionsResponse.success && sessionsResponse.data) {
         setSessions(sessionsResponse.data as Session[]);
       } else {
         // Show empty sessions when API is down
         setSessions([]);
       }
+      
+      // Update chart data
+      if (chartsResponse) {
+        setChartData(chartsResponse);
+      } else {
+        setChartData({ distanceData: [], sessionData: [] });
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to fetch data');
       // Show empty data when API fails
+      setTrends({
+        today: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 },
+        yesterday: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 }
+      });
       setStats({
         total_sessions: 0,
         total_orders: 0,
@@ -102,10 +131,13 @@ export default function Dashboard() {
         total_distance: 0
       });
       setSessions([]);
+      setChartData({ distanceData: [], sessionData: [] });
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   const checkHealth = async () => {
     try {
@@ -119,10 +151,11 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
     checkHealth();
-    // Disable auto-refresh for now since we're using mock data
-    // const interval = setInterval(fetchData, 10000);
-    // return () => clearInterval(interval);
-  }, []);
+    
+    // Refresh data every 3 seconds without loading state
+    const interval = setInterval(() => fetchData(false), 3000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const handleSessionClick = (session: any) => {
     // Handle session click - could open a dialog or navigate to details
@@ -140,6 +173,8 @@ export default function Dashboard() {
           <Overview
             sessions={sessions as any}
             stats={stats as any}
+            chartData={chartData}
+            trends={trends}
             loading={loading}
             error={error}
             onSessionClick={handleSessionClick}
@@ -168,6 +203,8 @@ export default function Dashboard() {
           <Overview
             sessions={sessions as any}
             stats={stats as any}
+            chartData={chartData}
+            trends={trends}
             loading={loading}
             error={error}
             onSessionClick={handleSessionClick}
@@ -194,53 +231,40 @@ export default function Dashboard() {
           }}
         >
           <Toolbar sx={{ minHeight: '64px', px: 3 }}>
-            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  ml: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    backgroundColor: healthStatus === 'connected' ? '#4caf50' : '#f44336',
-                    animation: healthStatus === 'connected' ? 'subtlePulse 3s ease-in-out infinite' : 'none',
-                    '@keyframes subtlePulse': {
-                      '0%': { opacity: 1, transform: 'scale(1)' },
-                      '50%': { opacity: 0.7, transform: 'scale(1.1)' },
-                      '100%': { opacity: 1, transform: 'scale(1)' },
-                    },
-                  }}
-                />
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: healthStatus === 'connected' ? '#4caf50' : '#f44336',
-                    fontWeight: 400,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  {healthStatus === 'connected' ? 'Connected' : 'Disconnected'}
-                </Typography>
-              </Box>
-            </Box>
+            <Box sx={{ flexGrow: 1 }} />
             
-            <IconButton 
-              onClick={fetchData}
+            <Box
               sx={{
-                color: theme.palette.text.secondary,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover,
-                },
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
               }}
             >
-              <Refresh />
-            </IconButton>
+              <Box
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: healthStatus === 'connected' ? '#4caf50' : '#f44336',
+                  animation: healthStatus === 'connected' ? 'subtlePulse 3s ease-in-out infinite' : 'none',
+                  '@keyframes subtlePulse': {
+                    '0%': { opacity: 1, transform: 'scale(1)' },
+                    '50%': { opacity: 0.7, transform: 'scale(1.1)' },
+                    '100%': { opacity: 1, transform: 'scale(1)' },
+                  },
+                }}
+              />
+              <Typography
+                variant="body2"
+                sx={{
+                  color: healthStatus === 'connected' ? '#4caf50' : '#f44336',
+                  fontWeight: 400,
+                  fontSize: '0.875rem',
+                }}
+              >
+                {healthStatus === 'connected' ? 'Connected' : 'Disconnected'}
+              </Typography>
+            </Box>
           </Toolbar>
         </AppBar>
 

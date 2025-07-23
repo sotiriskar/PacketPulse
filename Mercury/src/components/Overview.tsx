@@ -57,6 +57,14 @@ interface Stats {
 interface OverviewProps {
   sessions: Session[];
   stats: Stats;
+  chartData: {
+    distanceData: any[];
+    sessionData: any[];
+  };
+  trends: {
+    today: Stats;
+    yesterday: Stats;
+  };
   loading: boolean;
   error: string | null;
   onSessionClick: (session: Session) => void;
@@ -64,47 +72,45 @@ interface OverviewProps {
 
 // Remove mock data - we'll use real data from props and API
 
-export default function Overview({ sessions, stats, loading, error, onSessionClick }: OverviewProps) {
+export default function Overview({ sessions, stats, chartData, trends, loading, error, onSessionClick }: OverviewProps) {
   const theme = useTheme();
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [chartData, setChartData] = useState({
-    distanceData: [],
-    sessionData: []
-  });
-  const [trends, setTrends] = useState({
-    today: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 },
-    yesterday: { total_sessions: 0, total_orders: 0, total_fleet: 0, total_distance: 0 }
-  });
+
+  // Add CSS to prevent chart text flickering
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .recharts-text {
+        transition: none !important;
+        animation: none !important;
+      }
+      .recharts-cartesian-axis-tick-value {
+        transition: none !important;
+        animation: none !important;
+      }
+      .recharts-cartesian-axis-label {
+        transition: none !important;
+        animation: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Use real data from props
   const displaySessions = sessions;
   const displayStats = stats;
 
-  // Fetch chart data and trends
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const [chartResponse, trendsResponse] = await Promise.all([
-          fetch('/api/charts'),
-          fetch('/api/trends')
-        ]);
-        
-        if (chartResponse.ok) {
-          const chartDataResult = await chartResponse.json();
-          setChartData(chartDataResult);
-        }
-        
-        if (trendsResponse.ok) {
-          const trendsResult = await trendsResponse.json();
-          setTrends(trendsResult);
-        }
-      } catch (error) {
-        console.error('Error fetching chart data:', error);
-      }
-    };
-
-    fetchChartData();
-  }, []);
+  // Format numbers with K notation
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(2).replace(/\.?0+$/, '') + 'K';
+    }
+    return num.toString();
+  };
 
   // Calculate trend percentages
   const calculateTrend = (current: number, previous: number) => {
@@ -186,7 +192,7 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_sessions > 0 ? displayStats.total_sessions : '-'}
+                {displayStats.total_sessions > 0 ? formatNumber(displayStats.total_sessions) : '-'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {sessionsTrend >= 0 ? (
@@ -223,7 +229,7 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_orders > 0 ? displayStats.total_orders : '-'}
+                {displayStats.total_orders > 0 ? formatNumber(displayStats.total_orders) : '-'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {ordersTrend >= 0 ? (
@@ -260,7 +266,7 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_fleet > 0 ? displayStats.total_fleet : '-'}
+                {displayStats.total_fleet > 0 ? formatNumber(displayStats.total_fleet) : '-'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {fleetTrend >= 0 ? (
@@ -287,7 +293,7 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
         }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
-              Distance
+              Distance (km)
             </Typography>
             <Box sx={{ 
               flex: 1, 
@@ -297,7 +303,7 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_distance > 0 ? `${displayStats.total_distance} km` : '-'}
+                {displayStats.total_distance > 0 ? formatNumber(displayStats.total_distance) : '-'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {distanceTrend >= 0 ? (
@@ -332,10 +338,30 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData.distanceData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                 <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                <XAxis dataKey="day" />
-                <YAxis domain={[0, 2000]} />
+                <XAxis 
+                  dataKey="day" 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
+                <YAxis 
+                  domain={[0, 2000]} 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
                 <Tooltip />
-                <Line type="monotone" dataKey="distance" stroke="#1976d2" strokeWidth={2} />
+                <Line 
+                  type="monotone" 
+                  dataKey="distance" 
+                  stroke="#1976d2" 
+                  strokeWidth={2}
+                  style={{ transition: 'none' }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -349,11 +375,33 @@ export default function Overview({ sessions, stats, loading, error, onSessionCli
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData.sessionData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                 <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                <XAxis dataKey="day" />
-                <YAxis domain={[0, 200]} />
+                <XAxis 
+                  dataKey="day" 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
+                <YAxis 
+                  domain={[0, 200]} 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
                 <Tooltip />
-                <Bar dataKey="active" fill="#1976d2" />
-                <Bar dataKey="completed" fill="#4caf50" />
+                <Bar 
+                  dataKey="active" 
+                  fill="#1976d2"
+                  style={{ transition: 'none' }}
+                />
+                <Bar 
+                  dataKey="completed" 
+                  fill="#4caf50"
+                  style={{ transition: 'none' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
