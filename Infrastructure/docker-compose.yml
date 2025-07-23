@@ -227,6 +227,21 @@ services:
     networks:
       - packetpulse_network
 
+  mercury:
+    build:
+      context: ..
+      dockerfile: Mercury/Dockerfile
+    container_name: mercury
+    depends_on:
+      - venus
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_WEBSOCKET_URL=ws://venus:8000/ws
+      - NEXT_PUBLIC_API_BASE_URL=http://venus:8000
+    networks:
+      - packetpulse_network
+
 networks:
   packetpulse_network:
     driver: bridge
