@@ -1,28 +1,34 @@
-with session_status as (
-  select
-    session_id,
-    status
-  from session_movements
-  order by session_id, event_tsp desc
-  limit 1 by session_id
-),
+WITH trip_metrics AS (
 
-final as (
-    select
-    s.session_id as session_id,
-    min(m.event_tsp) as start_time,
-    max(m.event_tsp) as end_time,
-    dateDiff('second', min(m.event_tsp), max(m.event_tsp)) as duration_seconds,
-    round(greatCircleDistance(min(m.current_lat), min(m.current_lon), max(m.current_lat), max(m.current_lon)) / 1000, 2) as total_distance_km,
-    round(
-        (greatCircleDistance(min(m.current_lat), min(m.current_lon), max(m.current_lat), max(m.current_lon)) / 1000)
-        / dateDiff('second', min(m.event_tsp), max(m.event_tsp)) * 3.6, 2
-    ) as avg_speed_kmh
-    from session_movements m
-    join sessions s on s.session_id = m.session_id
-    join session_status ss on ss.session_id = s.session_id
-    where ss.status = 'completed'
-    group by s.session_id
+    SELECT
+        s.session_id,
+        toTimeZone(s.event_started, 'UTC') AS start_time,
+        toTimeZone(o.completed_at,  'UTC') AS end_time,
+
+        dateDiff(
+            'second',
+            toTimeZone(s.event_started, 'UTC'),
+            toTimeZone(o.completed_at,  'UTC')
+        ) AS duration_seconds,
+
+        -- CORRECTED: lon before lat
+        greatCircleDistance(
+            s.start_lon, s.start_lat,
+            s.end_lon,   s.end_lat
+        ) / 1000 AS total_distance_km
+
+    FROM sessions s
+    JOIN orders   o ON s.order_id = o.order_id
+    WHERE o.status = 'completed'
+
 )
 
-select * from final
+SELECT
+    session_id,
+    start_time,
+    end_time,
+    duration_seconds,
+    round(total_distance_km, 2)                                       AS total_distance_km,
+    round(total_distance_km / nullIf(duration_seconds, 0) * 3600, 2) AS avg_speed_kmh
+FROM trip_metrics
+WHERE duration_seconds > 0

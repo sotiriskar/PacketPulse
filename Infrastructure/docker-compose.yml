@@ -98,7 +98,7 @@ services:
     image: sqlpad/sqlpad:latest
     container_name: sqlpad
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - SQLPAD_ADMIN=admin@example.com
       - SQLPAD_ADMIN_PASSWORD=password
@@ -233,12 +233,11 @@ services:
       dockerfile: Mercury/Dockerfile
     container_name: mercury
     depends_on:
-      - venus
+      - clickhouse
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_WEBSOCKET_URL=ws://venus:8000/ws
-      - NEXT_PUBLIC_API_BASE_URL=http://venus:8000
+      - CLICKHOUSE_HOST=http://clickhouse:8123
     networks:
       - packetpulse_network
 

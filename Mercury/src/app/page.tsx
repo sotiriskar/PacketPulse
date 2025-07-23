@@ -1,230 +1,453 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  Box,
+  Container,
+  Card,
+  CardContent,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  IconButton,
+  Tooltip,
+  AppBar,
+  Toolbar,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import {
+  DirectionsCar,
+  Timeline,
+  Speed,
+  Visibility,
+  Refresh,
+  LocalShipping,
+} from '@mui/icons-material';
+import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { ApiService } from '@/utils/api';
 
 interface Session {
-  id: string;
-  vehicleId: string;
-  startTime: string;
-  endTime?: string;
-  status: 'active' | 'completed';
-  dataPoints: number;
+  session_id: string;
+  vehicle_id: string;
+  order_id: string;
+  order_status: string;
+  start_time: string;
+  last_update_time: string;
+  distance_to_destination_km: number;
+  elapsed_time: string;
+  avg_speed_kmh: number;
+  eta: string;
 }
 
-export default function Home() {
+interface Stats {
+  total_sessions: number;
+  active_sessions: number;
+  total_distance_km: number;
+  avg_speed_kmh: number;
+  total_vehicles: number;
+  vehicles_in_use: number;
+  total_completed_trips: number;
+}
+
+export default function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [stats, setStats] = useState({
-    totalSessions: 0,
-    activeSessions: 0,
-    totalDataPoints: 0,
+  const [stats, setStats] = useState<Stats>({
+    total_sessions: 0,
+    active_sessions: 0,
+    total_distance_km: 0,
+    avg_speed_kmh: 0,
+    total_vehicles: 0,
+    vehicles_in_use: 0,
+    total_completed_trips: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [sessionsResponse, statsResponse] = await Promise.all([
+        ApiService.getSessions(),
+        ApiService.getSessionStats(),
+      ]);
+
+      if (sessionsResponse.success && sessionsResponse.data) {
+        // Ensure data is an array
+        const sessionsData = Array.isArray(sessionsResponse.data) 
+          ? sessionsResponse.data as Session[]
+          : [];
+        setSessions(sessionsData);
+      } else {
+        setSessions([]);
+      }
+
+      if (statsResponse.success && statsResponse.data) {
+        // Ensure stats data is properly typed
+        const statsData = statsResponse.data as Stats;
+        setStats({
+          total_sessions: statsData.total_sessions || 0,
+          active_sessions: statsData.active_sessions || 0,
+          total_distance_km: statsData.total_distance_km || 0,
+          avg_speed_kmh: statsData.avg_speed_kmh || 0,
+          total_vehicles: statsData.total_vehicles || 0,
+          vehicles_in_use: statsData.vehicles_in_use || 0,
+          total_completed_trips: statsData.total_completed_trips || 0,
+        });
+      } else {
+        setStats({
+          total_sessions: 0,
+          active_sessions: 0,
+          total_distance_km: 0,
+          avg_speed_kmh: 0,
+          total_vehicles: 0,
+          vehicles_in_use: 0,
+          total_completed_trips: 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      setError('Failed to load dashboard data');
+      // Set default values on error
+      setSessions([]);
+      setStats({
+        total_sessions: 0,
+        active_sessions: 0,
+        total_distance_km: 0,
+        avg_speed_kmh: 0,
+        total_vehicles: 0,
+        vehicles_in_use: 0,
+        total_completed_trips: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate WebSocket connection to Venus
-    const connectWebSocket = () => {
-      try {
-        // For demo purposes, we'll simulate the connection
-        // In a real implementation, you would connect to the actual WebSocket
-        setIsConnected(true);
-        
-        // Simulate receiving session data
-        const mockSessions: Session[] = [
-          {
-            id: 'session-001',
-            vehicleId: 'vehicle-001',
-            startTime: new Date().toISOString(),
-            status: 'active',
-            dataPoints: 1250,
-          },
-          {
-            id: 'session-002',
-            vehicleId: 'vehicle-002',
-            startTime: new Date(Date.now() - 300000).toISOString(),
-            status: 'active',
-            dataPoints: 890,
-          },
-          {
-            id: 'session-003',
-            vehicleId: 'vehicle-003',
-            startTime: new Date(Date.now() - 600000).toISOString(),
-            endTime: new Date().toISOString(),
-            status: 'completed',
-            dataPoints: 2100,
-          },
-        ];
-        
-        setSessions(mockSessions);
-        
-        // Calculate stats
-        const totalSessions = mockSessions.length;
-        const activeSessions = mockSessions.filter(s => s.status === 'active').length;
-        const totalDataPoints = mockSessions.reduce((sum, s) => sum + s.dataPoints, 0);
-        
-        setStats({
-          totalSessions,
-          activeSessions,
-          totalDataPoints,
-        });
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
-        setIsConnected(false);
-      }
-    };
-
-    connectWebSocket();
-
-    // Cleanup function
-    return () => {
-      setIsConnected(false);
-    };
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
   }, []);
 
+  const handleSessionClick = (session: Session) => {
+    setSelectedSession(session);
+    setSessionDialogOpen(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'started':
+        return 'primary';
+      case 'en_route':
+        return 'warning';
+      case 'completed':
+        return 'success';
+      default:
+        return 'default';
+    }
+  };
+
+  const chartData = [
+    { name: 'Active Sessions', value: stats.active_sessions || 0, color: '#2196f3' },
+    { name: 'Completed Trips', value: stats.total_completed_trips || 0, color: '#4caf50' },
+    { name: 'Available Vehicles', value: Math.max(0, (stats.total_vehicles || 0) - (stats.vehicles_in_use || 0)), color: '#ff9800' },
+  ];
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <h1 className="text-2xl font-bold text-gray-900">PacketPulse</h1>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm font-medium">
-                  {isConnected ? 'Connected' : 'Disconnected'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <Box sx={{ flexGrow: 1 }}>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            PacketPulse Dashboard
+          </Typography>
+          <Tooltip title="Refresh Data">
+            <IconButton color="inherit" onClick={fetchData}>
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        </Toolbar>
+      </AppBar>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Sessions</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.totalSessions}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active Sessions</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.activeSessions}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* KPI Cards */}
+        <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+          <Card sx={{ minWidth: 250, flex: 1 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <DirectionsCar sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                <Box>
+                  <Typography color="textSecondary" gutterBottom>
+                    Active Sessions
+                  </Typography>
+                  <Typography variant="h4">
+                    {stats.active_sessions}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Data Points</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.totalDataPoints.toLocaleString()}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <Card sx={{ minWidth: 250, flex: 1 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <LocalShipping sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
+                <Box>
+                  <Typography color="textSecondary" gutterBottom>
+                    Total Vehicles
+                  </Typography>
+                  <Typography variant="h4">
+                    {stats.total_vehicles}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ minWidth: 250, flex: 1 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <Timeline sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
+                <Box>
+                  <Typography color="textSecondary" gutterBottom>
+                    Total Distance
+                  </Typography>
+                  <Typography variant="h4">
+                    {stats.total_distance_km.toFixed(1)} km
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ minWidth: 250, flex: 1 }}>
+            <CardContent>
+              <Box display="flex" alignItems="center">
+                <Speed sx={{ fontSize: 40, color: 'error.main', mr: 2 }} />
+                <Box>
+                  <Typography color="textSecondary" gutterBottom>
+                    Avg Speed
+                  </Typography>
+                  <Typography variant="h4">
+                    {stats.avg_speed_kmh.toFixed(1)} km/h
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Charts */}
+        <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+          <Card sx={{ flex: 1, minWidth: 400 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Fleet Distribution
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: 1, minWidth: 400 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Speed Distribution
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={sessions.slice(0, 10).map(s => ({ 
+                  vehicle: s.vehicle_id.slice(-4), 
+                  speed: s.avg_speed_kmh 
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="vehicle" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Bar dataKey="speed" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Box>
 
         {/* Sessions Table */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Active Sessions</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Session ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vehicle ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Start Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Data Points
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Active Sessions
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Session ID</TableCell>
+                    <TableCell>Vehicle ID</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Distance to Destination</TableCell>
+                    <TableCell>Avg Speed</TableCell>
+                    <TableCell>Elapsed Time</TableCell>
+                    <TableCell>ETA</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {sessions.map((session) => (
-                    <tr key={session.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {session.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {session.vehicleId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(session.startTime).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          session.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {session.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {session.dataPoints.toLocaleString()}
-                      </td>
-                    </tr>
+                    <TableRow key={session.session_id} hover>
+                      <TableCell>{session.session_id}</TableCell>
+                      <TableCell>{session.vehicle_id}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={session.order_status}
+                          color={getStatusColor(session.order_status) as 'primary' | 'warning' | 'success' | 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{session.distance_to_destination_km.toFixed(2)} km</TableCell>
+                      <TableCell>{session.avg_speed_kmh.toFixed(1)} km/h</TableCell>
+                      <TableCell>{session.elapsed_time}</TableCell>
+                      <TableCell>{session.eta}</TableCell>
+                      <TableCell>
+                        <Tooltip title="View Details">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleSessionClick(session)}
+                          >
+                            <Visibility />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </Container>
+
+      {/* Session Details Dialog */}
+      <Dialog
+        open={sessionDialogOpen}
+        onClose={() => setSessionDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Session Details - {selectedSession?.session_id}
+        </DialogTitle>
+        <DialogContent>
+          {selectedSession && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ flex: 1, minWidth: 300 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Vehicle ID:</strong> {selectedSession.vehicle_id}
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Order ID:</strong> {selectedSession.order_id}
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Status:</strong> 
+                  <Chip
+                    label={selectedSession.order_status}
+                    color={getStatusColor(selectedSession.order_status) as 'primary' | 'warning' | 'success' | 'default'}
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Start Time:</strong> {new Date(selectedSession.start_time).toLocaleString()}
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Last Update:</strong> {new Date(selectedSession.last_update_time).toLocaleString()}
+                </Typography>
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 300 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Distance to Destination:</strong> {selectedSession.distance_to_destination_km.toFixed(2)} km
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Average Speed:</strong> {selectedSession.avg_speed_kmh.toFixed(1)} km/h
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Elapsed Time:</strong> {selectedSession.elapsed_time}
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>ETA:</strong> {selectedSession.eta}
+                </Typography>
+              </Box>
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Location Map
+                </Typography>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: 300,
+                    bgcolor: 'grey.200',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography color="textSecondary">
+                    Map component would show current location here
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSessionDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }

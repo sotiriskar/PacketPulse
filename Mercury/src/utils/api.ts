@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = '/api';
 
 export interface ApiResponse<T = unknown> {
   data: T;
@@ -55,7 +55,7 @@ export class ApiService {
 
   // Get session statistics
   static async getSessionStats(): Promise<ApiResponse<unknown>> {
-    return this.request('/sessions/stats');
+    return this.request('/stats');
   }
 
   // Get vehicle data
@@ -67,4 +67,4 @@ export class ApiService {
   static async getHealth(): Promise<ApiResponse<unknown>> {
     return this.request('/health');
   }
-} 
+}

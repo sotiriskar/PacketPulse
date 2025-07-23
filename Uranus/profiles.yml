@@ -9,11 +9,11 @@ Uranus:
       password: "{{ env_var('CLICKHOUSE_PASSWORD') }}"
       database: "{{ env_var('CLICKHOUSE_DATABASE') }}"
       schema: "{{ env_var('CLICKHOUSE_SCHEMA') }}"
-      secure: "{{ env_var('CLICKHOUSE_SECURE') | as_bool }}"
-      verify: "{{ env_var('CLICKHOUSE_VERIFY') | as_bool }}"
+      secure: "{{ env_var('CLICKHOUSE_SECURE', 'false') == 'true' }}"
+      verify: "{{ env_var('CLICKHOUSE_VERIFY', 'false') == 'true' }}"
       connect_timeout: "{{ env_var('CLICKHOUSE_CONNECT_TIMEOUT') | as_native }}"
       send_receive_timeout: "{{ env_var('CLICKHOUSE_SEND_RECEIVE_TIMEOUT') | as_native }}"
       sync_request_timeout: "{{ env_var('CLICKHOUSE_SYNC_REQUEST_TIMEOUT') | as_native }}"
-      compress: "{{ env_var('CLICKHOUSE_COMPRESS') | as_bool }}"
+      compress: "{{ env_var('CLICKHOUSE_COMPRESS', 'false') == 'true' }}"
       settings:
         use_numpy: true
