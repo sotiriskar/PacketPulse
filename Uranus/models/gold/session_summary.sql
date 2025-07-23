@@ -11,7 +11,6 @@ WITH trip_metrics AS (
             toTimeZone(o.completed_at,  'UTC')
         ) AS duration_seconds,
 
-        -- CORRECTED: lon before lat
         greatCircleDistance(
             s.start_lon, s.start_lat,
             s.end_lon,   s.end_lat
