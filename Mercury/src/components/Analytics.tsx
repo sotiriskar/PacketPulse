@@ -17,15 +17,7 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  Speed,
-  LocalShipping,
-  Timeline,
-  Assessment,
-  TrendingUp,
-  EmojiEvents,
-  Star,
-  Schedule,
-  DirectionsCar,
+  Star
 } from '@mui/icons-material';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
