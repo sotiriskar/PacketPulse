@@ -27,8 +27,15 @@ interface Session {
   elapsed_time: string;
   avg_speed_kmh: number;
   eta: string;
-  duration_seconds: number;
-  total_distance_km: number;
+  // Current vehicle coordinates
+  current_latitude?: number;
+  current_longitude?: number;
+  // Start coordinates (pickup)
+  start_latitude?: number;
+  start_longitude?: number;
+  // End coordinates (delivery)
+  end_latitude?: number;
+  end_longitude?: number;
 }
 
 interface Stats {
@@ -45,6 +52,7 @@ interface Stats {
 export default function Dashboard() {
   const theme = useTheme();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessions, setActiveSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState<Stats>({
     total_sessions: 0,
     total_orders: 0,
@@ -72,9 +80,10 @@ export default function Dashboard() {
     
     try {
       // Fetch all data in parallel
-      const [trendsResponse, sessionsResponse, chartsResponse] = await Promise.all([
+      const [trendsResponse, sessionsResponse, activeSessionsResponse, chartsResponse] = await Promise.all([
         ApiService.getTrends(),
         ApiService.getRecentSessions(),
+        ApiService.getActiveSessions(),
         fetch('/api/charts').then(res => res.json())
       ]);
       
@@ -110,6 +119,14 @@ export default function Dashboard() {
         setSessions([]);
       }
       
+      // Update active sessions data for LiveMap
+      if (activeSessionsResponse.success && activeSessionsResponse.data) {
+        setActiveSessions(activeSessionsResponse.data as Session[]);
+      } else {
+        // Show empty active sessions when API is down
+        setActiveSessions([]);
+      }
+      
       // Update chart data
       if (chartsResponse) {
         setChartData(chartsResponse);
@@ -131,6 +148,7 @@ export default function Dashboard() {
         total_distance: 0
       });
       setSessions([]);
+      setActiveSessions([]);
       setChartData({ distanceData: [], sessionData: [] });
     } finally {
       if (showLoading) {
@@ -183,7 +201,7 @@ export default function Dashboard() {
       case 'map':
         return (
           <LiveMap
-            sessions={sessions as any}
+            sessions={activeSessions as any}
             loading={loading}
             error={error}
             onSessionClick={handleSessionClick}

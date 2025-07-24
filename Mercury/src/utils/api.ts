@@ -48,6 +48,11 @@ export class ApiService {
     return this.request('/sessions');
   }
 
+  // Get active sessions for LiveMap
+  static async getActiveSessions(): Promise<ApiResponse<unknown[]>> {
+    return this.request('/sessions/active');
+  }
+
   // Get recent sessions for the table
   static async getRecentSessions(): Promise<ApiResponse<unknown[]>> {
     return this.request('/sessions/recent');
