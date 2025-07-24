@@ -200,10 +200,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
     }
   };
 
-
-
-
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">

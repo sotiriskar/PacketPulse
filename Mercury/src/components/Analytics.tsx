@@ -8,12 +8,24 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  Chip,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import {
   Speed,
   LocalShipping,
   Timeline,
   Assessment,
+  TrendingUp,
+  EmojiEvents,
+  Star,
+  Schedule,
+  DirectionsCar,
 } from '@mui/icons-material';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
@@ -47,7 +59,7 @@ interface AnalyticsProps {
   error: string | null;
 }
 
-// Mock data
+// Enhanced mock data with more realistic patterns
 const mockSessions: Session[] = [
   {
     session_id: 'SESS001',
@@ -126,62 +138,83 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
   const displaySessions = mockSessions;
   const displayStats = mockStats;
 
-  // Mock data for analytics charts
-  const performanceData = [
-    { time: '00:00', speed: 45, efficiency: 85 },
-    { time: '04:00', speed: 52, efficiency: 88 },
-    { time: '08:00', speed: 48, efficiency: 82 },
-    { time: '12:00', speed: 55, efficiency: 90 },
-    { time: '16:00', speed: 58, efficiency: 92 },
-    { time: '20:00', speed: 50, efficiency: 87 },
-    { time: '24:00', speed: 47, efficiency: 84 },
+  // Peak hour analysis data (24-hour cycle)
+  const peakHourData = [
+    { hour: '00:00', deliveries: 2, idle_vehicles: 18 },
+    { hour: '02:00', deliveries: 1, idle_vehicles: 19 },
+    { hour: '04:00', deliveries: 0, idle_vehicles: 20 },
+    { hour: '06:00', deliveries: 3, idle_vehicles: 17 },
+    { hour: '08:00', deliveries: 8, idle_vehicles: 12 },
+    { hour: '10:00', deliveries: 12, idle_vehicles: 8 },
+    { hour: '12:00', deliveries: 15, idle_vehicles: 5 },
+    { hour: '14:00', deliveries: 14, idle_vehicles: 6 },
+    { hour: '16:00', deliveries: 16, idle_vehicles: 4 },
+    { hour: '18:00', deliveries: 13, idle_vehicles: 7 },
+    { hour: '20:00', deliveries: 9, idle_vehicles: 11 },
+    { hour: '22:00', deliveries: 4, idle_vehicles: 16 },
   ];
 
+  // Idle time analysis data
+  const idleTimeData = [
+    { day: 'Mon', idle_hours: 4.2, utilization: 82.5 },
+    { day: 'Tue', idle_hours: 3.8, utilization: 84.2 },
+    { day: 'Wed', idle_hours: 5.1, utilization: 78.7 },
+    { day: 'Thu', idle_hours: 3.5, utilization: 85.4 },
+    { day: 'Fri', idle_hours: 4.8, utilization: 80.0 },
+    { day: 'Sat', idle_hours: 6.2, utilization: 74.2 },
+    { day: 'Sun', idle_hours: 7.5, utilization: 68.8 },
+  ];
+
+  // Peak activity periods data
+  const peakActivityData = [
+    { period: 'Early AM (6-9)', activity: 23, efficiency: 85 },
+    { period: 'Morning (9-12)', activity: 41, efficiency: 92 },
+    { period: 'Lunch (12-14)', activity: 38, efficiency: 88 },
+    { period: 'Afternoon (14-17)', activity: 45, efficiency: 90 },
+    { period: 'Evening (17-20)', activity: 32, efficiency: 87 },
+    { period: 'Night (20-23)', activity: 18, efficiency: 82 },
+    { period: 'Late Night (23-6)', activity: 8, efficiency: 75 },
+  ];
+
+  // Top performers data
+  const topPerformers = [
+    {
+      id: 'VH001',
+      name: 'Vehicle Alpha',
+      driver: 'John Smith',
+      completionRate: 98.5,
+      avgSpeed: 48.2,
+      totalDeliveries: 156,
+      badges: ['Speed Demon', 'Perfect Record'],
+      avatar: '🚛',
+    },
+    {
+      id: 'VH003',
+      name: 'Vehicle Beta',
+      driver: 'Sarah Johnson',
+      completionRate: 96.8,
+      avgSpeed: 45.7,
+      totalDeliveries: 142,
+      badges: ['Efficiency Expert', 'Safety First'],
+      avatar: '🚚',
+    },
+    {
+      id: 'VH007',
+      name: 'Vehicle Gamma',
+      driver: 'Mike Chen',
+      completionRate: 95.2,
+      avgSpeed: 43.1,
+      totalDeliveries: 128,
+      badges: ['Consistent Performer'],
+      avatar: '🚛',
+    },
+  ];
+
+  // Fleet utilization data
   const fleetUtilizationData = [
     { name: 'Active', value: displayStats.vehicles_in_use, color: '#2196f3' },
     { name: 'Available', value: Math.max(0, displayStats.total_vehicles - displayStats.vehicles_in_use), color: '#4caf50' },
     { name: 'Maintenance', value: Math.floor(displayStats.total_vehicles * 0.1), color: '#ff9800' },
-  ];
-
-  const speedDistributionData = displaySessions.slice(0, 10).map(s => ({
-    vehicle: s.vehicle_id.slice(-4),
-    speed: s.avg_speed_kmh,
-    distance: s.distance_to_destination_km,
-  }));
-
-  const efficiencyMetrics = [
-    {
-      title: 'Fleet Utilization',
-      value: `${((displayStats.vehicles_in_use / displayStats.total_vehicles) * 100).toFixed(1)}%`,
-      trend: '+5.2%',
-      trendUp: true,
-      icon: <LocalShipping />,
-      color: 'primary.main',
-    },
-    {
-      title: 'Average Speed',
-      value: `${displayStats.avg_speed_kmh.toFixed(1)} km/h`,
-      trend: '+2.1%',
-      trendUp: true,
-      icon: <Speed />,
-      color: 'success.main',
-    },
-    {
-      title: 'Trip Completion Rate',
-      value: `${((displayStats.total_completed_trips / displayStats.total_sessions) * 100).toFixed(1)}%`,
-      trend: '+1.8%',
-      trendUp: true,
-      icon: <Timeline />,
-      color: 'warning.main',
-    },
-    {
-      title: 'Distance Efficiency',
-      value: `${(displayStats.total_distance_km / displayStats.total_sessions).toFixed(1)} km/trip`,
-      trend: '-0.5%',
-      trendUp: false,
-      icon: <Assessment />,
-      color: 'error.main',
-    },
   ];
 
   if (loading) {
@@ -200,196 +233,338 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
         </Alert>
       )}
 
-      {/* Performance Metrics */}
+      {/* Key Metrics - Keep Completion Rate */}
       <Box sx={{ 
         display: 'grid', 
         gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, 
         gap: 3, 
         mb: 4 
       }}>
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography color="text.secondary" variant="body2">
-              Fleet Utilization
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 1 }}>
-              {Math.round((displayStats.vehicles_in_use / displayStats.total_vehicles) * 100)}%
-            </Typography>
-            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-              +5.2% from last week
-            </Typography>
-          </CardContent>
-        </Card>
-
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography color="text.secondary" variant="body2">
-              Average Speed
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 1 }}>
-              {displayStats.avg_speed_kmh.toFixed(1)} km/h
-            </Typography>
-            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-              +2.1% from last week
-            </Typography>
-          </CardContent>
-        </Card>
-
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography color="text.secondary" variant="body2">
+        <Card sx={{ 
+          height: 165,
+          backgroundColor: 'white',
+          borderRadius: 3,
+          position: 'relative'
+        }}>
+          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
               Completion Rate
             </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 1 }}>
-              {Math.round((displayStats.total_completed_trips / displayStats.total_sessions) * 100)}%
-            </Typography>
-            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-              +1.8% from last week
-            </Typography>
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                {Math.round((displayStats.total_completed_trips / displayStats.total_sessions) * 100)}%
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 500 }}>
+                +1.8% from last week
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
 
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography color="text.secondary" variant="body2">
-              Total Distance
+        <Card sx={{ 
+          height: 165,
+          backgroundColor: 'white',
+          borderRadius: 3,
+          position: 'relative'
+        }}>
+          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+              Peak Hour Activity
             </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 1 }}>
-              {displayStats.total_distance_km.toFixed(0)} km
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                16
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#2196f3', fontWeight: 500 }}>
+                4-5 PM (Peak)
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ 
+          height: 165,
+          backgroundColor: 'white',
+          borderRadius: 3,
+          position: 'relative'
+        }}>
+          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+              Avg Idle Time
             </Typography>
-            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-              +12.3% from last week
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                4.8h
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#ff9800', fontWeight: 500 }}>
+                Per vehicle/day
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ 
+          height: 165,
+          backgroundColor: 'white',
+          borderRadius: 3,
+          position: 'relative'
+        }}>
+          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+              Fleet Utilization
             </Typography>
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                {Math.round((displayStats.vehicles_in_use / displayStats.total_vehicles) * 100)}%
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 500 }}>
+                +5.2% from last week
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
       </Box>
 
-      {/* Charts */}
+      {/* Peak Hour Analysis */}
+      <Card sx={{ backgroundColor: 'white', mb: 3, borderRadius: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+            Peak Hour Analysis
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={peakHourData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+              <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="hour" 
+                style={{ 
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  transition: 'none'
+                }}
+              />
+              <YAxis 
+                style={{ 
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  transition: 'none'
+                }}
+              />
+              <RechartsTooltip />
+              <Area type="monotone" dataKey="deliveries" stackId="1" stroke="#2196f3" fill="#2196f3" fillOpacity={0.6} name="Deliveries" />
+              <Area type="monotone" dataKey="idle_vehicles" stackId="2" stroke="#ff9800" fill="#ff9800" fillOpacity={0.6} name="Idle" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Charts Row */}
       <Box sx={{ 
         display: 'grid', 
         gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, 
         gap: 3, 
         mb: 4 
       }}>
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Speed Distribution
+        {/* Idle Time Analysis */}
+        <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+              Idle Time Analysis
             </Typography>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={speedDistributionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="vehicle" />
-                <YAxis />
+              <BarChart data={idleTimeData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+                <XAxis 
+                  dataKey="day" 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
+                <YAxis 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
                 <RechartsTooltip />
-                <Bar dataKey="speed" fill="#2196f3" />
+                <Bar dataKey="idle_hours" fill="#ff9800" name="Hours" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Distance vs Speed Correlation
+        {/* Peak Activity Periods */}
+        <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+              Peak Activity Periods
             </Typography>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={speedDistributionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="vehicle" />
-                <YAxis />
+              <LineChart data={peakActivityData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+                <XAxis 
+                  dataKey="period" 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
+                <YAxis 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                />
                 <RechartsTooltip />
-                <Area type="monotone" dataKey="speed" stackId="1" stroke="#2196f3" fill="#2196f3" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="distance" stackId="2" stroke="#4caf50" fill="#4caf50" fillOpacity={0.6} />
-              </AreaChart>
+                <Line type="monotone" dataKey="activity" stroke="#2196f3" strokeWidth={3} name="Activity" />
+                <Line type="monotone" dataKey="efficiency" stroke="#4caf50" strokeWidth={2} name="Efficiency" />
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </Box>
 
-      {/* Fleet Utilization Details */}
-      <Card sx={{ backgroundColor: 'white' }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Fleet Status Overview
+      {/* Top Performers */}
+      <Card sx={{ backgroundColor: 'white', mb: 4, borderRadius: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+            Top Performers
           </Typography>
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, 
-            gap: 3 
-          }}>
-            <Box>
-              <Typography variant="subtitle2" color="primary.main">
-                In Use
-              </Typography>
-              <Typography variant="h4" sx={{ mt: 1 }}>
-                {displayStats.vehicles_in_use}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Active vehicles
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" color="success.main">
-                Available
-              </Typography>
-              <Typography variant="h4" sx={{ mt: 1 }}>
-                {displayStats.total_vehicles - displayStats.vehicles_in_use}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Ready for dispatch
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" color="warning.main">
-                Maintenance
-              </Typography>
-              <Typography variant="h4" sx={{ mt: 1 }}>
-                2
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Under service
-              </Typography>
-            </Box>
-          </Box>
+          <List>
+            {topPerformers.map((performer, index) => (
+              <React.Fragment key={performer.id}>
+                <ListItem alignItems="flex-start">
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#2196f3' }}>
+                      {performer.avatar}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {performer.name}
+                        </Typography>
+                        {index === 0 && <Star sx={{ color: '#ffd700', fontSize: 20 }} />}
+                      </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Driver: {performer.driver} • {performer.totalDeliveries} deliveries
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                          <Chip 
+                            label={`${performer.completionRate}% completion`} 
+                            size="small" 
+                            color="success" 
+                            variant="outlined"
+                          />
+                          <Chip 
+                            label={`${performer.avgSpeed} km/h avg`} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                          {performer.badges.map((badge, badgeIndex) => (
+                            <Chip 
+                              key={badgeIndex}
+                              label={badge} 
+                              size="small" 
+                              sx={{ 
+                                fontSize: '0.7rem',
+                                backgroundColor: index === 0 ? '#fff3cd' : '#e3f2fd',
+                                color: index === 0 ? '#856404' : '#1976d2'
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+                {index < topPerformers.length - 1 && <Divider variant="inset" component="li" />}
+              </React.Fragment>
+            ))}
+          </List>
         </CardContent>
       </Card>
 
-      {/* Key Insights */}
-      <Card sx={{ mt: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Key Insights
+      {/* Fleet Status */}
+      <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+            Fleet Status
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-            <Box>
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                🚀 Performance Highlights
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Fleet utilization has improved by 5.2% this month, with average speeds increasing by 2.1%. 
-                Trip completion rates remain strong at {((displayStats.total_completed_trips / displayStats.total_sessions) * 100).toFixed(1)}%.
-              </Typography>
+                      <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, 
+              gap: 15 
+            }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="subtitle2" color="primary.main">
+                  In Use
+                </Typography>
+                <Typography variant="h4" sx={{ mt: 1 }}>
+                  {displayStats.vehicles_in_use}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Active vehicles
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="subtitle2" color="success.main">
+                  Available
+                </Typography>
+                <Typography variant="h4" sx={{ mt: 1 }}>
+                  {displayStats.total_vehicles - displayStats.vehicles_in_use}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Ready for dispatch
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="subtitle2" color="warning.main">
+                  Maintenance
+                </Typography>
+                <Typography variant="h4" sx={{ mt: 1 }}>
+                  2
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Under service
+                </Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="subtitle2" color="warning.main" gutterBottom>
-                ⚠️ Areas for Improvement
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Distance efficiency has decreased slightly by 0.5%. Consider optimizing routes and 
-                reducing idle time to improve overall fleet performance.
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" color="success.main" gutterBottom>
-                📈 Recommendations
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Implement predictive maintenance schedules and optimize route planning algorithms 
-                to further improve fleet efficiency and reduce operational costs.
-              </Typography>
-            </Box>
-          </Box>
         </CardContent>
       </Card>
     </Box>
