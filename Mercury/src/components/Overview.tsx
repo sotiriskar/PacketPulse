@@ -245,7 +245,7 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_sessions > 0 ? formatNumber(displayStats.total_sessions) : '-'}
+                {displayStats.total_sessions > 0 ? formatNumber(displayStats.total_sessions) : '0'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {sessionsTrend >= 0 ? (
@@ -282,7 +282,7 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_orders > 0 ? formatNumber(displayStats.total_orders) : '-'}
+                {displayStats.total_orders > 0 ? formatNumber(displayStats.total_orders) : '0'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {ordersTrend >= 0 ? (
@@ -319,7 +319,7 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_fleet > 0 ? formatNumber(displayStats.total_fleet) : '-'}
+                {displayStats.total_fleet > 0 ? formatNumber(displayStats.total_fleet) : '0'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {fleetTrend >= 0 ? (
@@ -356,7 +356,7 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
               justifyContent: 'center' 
             }}>
               <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {displayStats.total_distance > 0 ? formatNumber(displayStats.total_distance) : '-'}
+                {displayStats.total_distance > 0 ? formatNumber(displayStats.total_distance) : '0'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {distanceTrend >= 0 ? (

@@ -318,7 +318,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               ) : (
                 <>
                   <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData ? `${analyticsData.completionRate}%` : '0%'}
+                    {analyticsData && analyticsData.completionRate > 0 ? `${analyticsData.completionRate}%` : '0%'}
                   </Typography>
                 </>
               )}
@@ -348,7 +348,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               ) : (
                 <>
                   <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData ? analyticsData.peakHourActivity.peakHour : '12am-1am'}
+                    {analyticsData && analyticsData.peakHourActivity.peakHour ? analyticsData.peakHourActivity.peakHour : 'N/A'}
                   </Typography>
                 </>
               )}
@@ -378,7 +378,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               ) : (
                 <>
                   <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData ? `${analyticsData.avgDurationMinutes}m` : '0m'}
+                    {analyticsData && analyticsData.avgDurationMinutes > 0 ? `${analyticsData.avgDurationMinutes}m` : '0m'}
                   </Typography>
                 </>
               )}
@@ -408,7 +408,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               ) : (
                 <>
                   <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData ? `${analyticsData.avgDistanceKm}km` : '0km'}
+                    {analyticsData && analyticsData.avgDistanceKm > 0 ? `${analyticsData.avgDistanceKm}km` : '0km'}
                   </Typography>
                 </>
               )}
@@ -712,16 +712,16 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           </Typography>
           <Box display="flex" justifyContent="space-evenly" alignItems="center" mt={2} gap={6}>
             <Box textAlign="center">
-              <Typography variant="h5" fontWeight="bold" color={colorPalette.primaryVeryDark}>
-                {analyticsData ? analyticsData.fleetStatus.activeVehicles : 0}
-              </Typography>
+                              <Typography variant="h5" fontWeight="bold" color={colorPalette.primaryVeryDark}>
+                  {analyticsData && analyticsData.fleetStatus.activeVehicles > 0 ? analyticsData.fleetStatus.activeVehicles : 0}
+                </Typography>
               <Typography variant="caption" color="text.secondary">
                 Active
               </Typography>
             </Box>
             <Box textAlign="center">
               <Typography variant="h5" fontWeight="bold" color={colorPalette.secondary}>
-                {analyticsData ? analyticsData.fleetStatus.availableVehicles : 0}
+                {analyticsData && analyticsData.fleetStatus.availableVehicles > 0 ? analyticsData.fleetStatus.availableVehicles : 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Available
@@ -729,7 +729,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
             </Box>
             <Box textAlign="center">
               <Typography variant="h5" fontWeight="bold" color={colorPalette.accent}>
-                {analyticsData ? analyticsData.fleetStatus.maintenanceVehicles : 0}
+                {analyticsData && analyticsData.fleetStatus.maintenanceVehicles > 0 ? analyticsData.fleetStatus.maintenanceVehicles : 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Maintenance
