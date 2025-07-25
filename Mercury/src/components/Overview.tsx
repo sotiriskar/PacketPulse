@@ -233,6 +233,98 @@ export default function Overview({
     };
   }, [stats, trends.yesterday]);
 
+  // Memoized chart data to prevent unnecessary re-renders
+  const memoizedDistanceData = useMemo(() => {
+    return chartData.distanceData || [];
+  }, [JSON.stringify(chartData.distanceData)]);
+
+  const memoizedSessionData = useMemo(() => {
+    return chartData.sessionData || [];
+  }, [JSON.stringify(chartData.sessionData)]);
+
+  // Memoized chart components to prevent re-renders
+  const distanceChart = useMemo(() => (
+    <LineChart 
+      key="weekly-distance-chart"
+      data={memoizedDistanceData} 
+      margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
+    >
+      <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+      <XAxis 
+        dataKey="day" 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+      />
+      <YAxis 
+        domain={[0, 'dataMax + 100']} 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+      />
+      <Tooltip 
+        contentStyle={{
+          backgroundColor: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          fontSize: isMobile ? '12px' : '14px'
+        }}
+      />
+      <Line 
+        type="monotone" 
+        dataKey="distance" 
+        stroke={colorPalette.primary}
+        strokeWidth={2}
+        dot={{ fill: colorPalette.primary, strokeWidth: 2, r: 4 }}
+        activeDot={{ r: 6, stroke: colorPalette.primary, strokeWidth: 2 }}
+      />
+    </LineChart>
+  ), [memoizedDistanceData, isMobile]);
+
+  const sessionsChart = useMemo(() => (
+    <BarChart 
+      key="weekly-sessions-chart"
+      data={memoizedSessionData} 
+      margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
+    >
+      <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+      <XAxis 
+        dataKey="day" 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+      />
+      <YAxis 
+        domain={[0, 'dataMax + 10']} 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+      />
+      <Tooltip 
+        contentStyle={{
+          backgroundColor: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          fontSize: isMobile ? '12px' : '14px'
+        }}
+      />
+      <Bar 
+        dataKey="active" 
+        fill={colorPalette.primaryVeryDark}
+        radius={[4, 4, 0, 0]}
+      />
+      <Bar 
+        dataKey="completed" 
+        fill={colorPalette.tertiary}
+        radius={[4, 4, 0, 0]}
+      />
+    </BarChart>
+  ), [memoizedSessionData, isMobile]);
+
   const statusConfig = useMemo(() => ({
     en_route: { label: 'En Route', color: colorPalette.primary },
     started: { label: 'Started', color: colorPalette.primaryLight },
@@ -313,83 +405,11 @@ export default function Overview({
         mb: { xs: 2, sm: 3, md: 4 } 
       }}>
         <ChartCard title="Weekly Distance (km)" height={isMobile ? 250 : 300}>
-          <LineChart 
-            data={chartData.distanceData} 
-            margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
-          >
-            <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-            <XAxis 
-              dataKey="day" 
-              style={{ 
-                fontSize: isMobile ? '10px' : '12px',
-                fontFamily: 'inherit'
-              }}
-            />
-            <YAxis 
-              domain={[0, 'dataMax + 100']} 
-              style={{ 
-                fontSize: isMobile ? '10px' : '12px',
-                fontFamily: 'inherit'
-              }}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: isMobile ? '12px' : '14px'
-              }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="distance" 
-              stroke={colorPalette.primary}
-              strokeWidth={2}
-              dot={{ fill: colorPalette.primary, strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: colorPalette.primary, strokeWidth: 2 }}
-            />
-          </LineChart>
+          {distanceChart}
         </ChartCard>
 
         <ChartCard title="Weekly Sessions" height={isMobile ? 250 : 300}>
-          <BarChart 
-            data={chartData.sessionData} 
-            margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
-          >
-            <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-            <XAxis 
-              dataKey="day" 
-              style={{ 
-                fontSize: isMobile ? '10px' : '12px',
-                fontFamily: 'inherit'
-              }}
-            />
-            <YAxis 
-              domain={[0, 'dataMax + 10']} 
-              style={{ 
-                fontSize: isMobile ? '10px' : '12px',
-                fontFamily: 'inherit'
-              }}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: isMobile ? '12px' : '14px'
-              }}
-            />
-            <Bar 
-              dataKey="active" 
-              fill={colorPalette.primaryVeryDark}
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar 
-              dataKey="completed" 
-              fill={colorPalette.tertiary}
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
+          {sessionsChart}
         </ChartCard>
       </Box>
 

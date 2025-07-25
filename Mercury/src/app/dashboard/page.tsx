@@ -141,11 +141,19 @@ export default function Dashboard() {
         setActiveSessions([]);
       }
       
-      // Update chart data
+      // Update chart data only if it has actually changed
       if (chartsResponse) {
-        setChartData(chartsResponse);
+        setChartData(prevChartData => {
+          // Deep comparison to check if data has actually changed
+          const hasChanged = JSON.stringify(prevChartData) !== JSON.stringify(chartsResponse);
+          return hasChanged ? chartsResponse : prevChartData;
+        });
       } else {
-        setChartData({ distanceData: [], sessionData: [] });
+        setChartData(prevChartData => {
+          const emptyData = { distanceData: [], sessionData: [] };
+          const hasChanged = JSON.stringify(prevChartData) !== JSON.stringify(emptyData);
+          return hasChanged ? emptyData : prevChartData;
+        });
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -163,7 +171,11 @@ export default function Dashboard() {
       });
       setSessions([]);
       setActiveSessions([]);
-      setChartData({ distanceData: [], sessionData: [] });
+      setChartData(prevChartData => {
+        const emptyData = { distanceData: [], sessionData: [] };
+        const hasChanged = JSON.stringify(prevChartData) !== JSON.stringify(emptyData);
+        return hasChanged ? emptyData : prevChartData;
+      });
     } finally {
       if (showLoading) {
         setLoading(false);
