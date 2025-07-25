@@ -20,6 +20,7 @@ import {
   Settings,
   Notifications,
 } from '@mui/icons-material';
+import Image from 'next/image';
 
 interface SidebarProps {
   selectedTab: string;
@@ -66,15 +67,19 @@ export default function Sidebar({ selectedTab, onTabChange }: SidebarProps) {
         },
       }}
     >
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-          PacketPulse
-        </Typography>
+      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Image
+          src="/images/logo.png"
+          alt="PacketPulse Logo"
+          width={210}
+          height={50}
+          style={{ objectFit: 'contain' }}
+        />
       </Box>
       
       <Divider />
       
-      <List sx={{ px: 2, py: 1 }}>
+      <List sx={{ px: 2, py: 1, mt: 2 }}>
         {menuItems.map((item) => (
           <ListItem key={item.id} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
@@ -83,10 +88,10 @@ export default function Sidebar({ selectedTab, onTabChange }: SidebarProps) {
               sx={{
                 borderRadius: 2,
                 '&.Mui-selected': {
-                  backgroundColor: theme.palette.primary.main,
-                  color: theme.palette.primary.contrastText,
+                  backgroundColor: '#fe4e50',
+                  color: 'white',
                   '&:hover': {
-                    backgroundColor: theme.palette.primary.dark,
+                    backgroundColor: '#d13a3c',
                   },
                 },
                 '&:hover': {

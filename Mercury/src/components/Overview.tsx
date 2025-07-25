@@ -39,6 +39,18 @@ import {
   Bar,
 } from 'recharts';
 
+// Color palette based on #fe4e50
+const colorPalette = {
+  primary: '#fe4e50', // Main brand color
+  primaryLight: '#ff6b6d', // Lighter shade
+  primaryDark: '#d13a3c', // Darker shade
+  primaryVeryDark: '#a82d2f', // Very dark for Active status
+  secondary: '#ff8a80', // Complementary light
+  tertiary: '#ffb3a7', // Very light shade
+  accent: '#ff6b6d', // Medium light
+  muted: '#ffcdd2', // Very light for backgrounds
+};
+
 interface Session {
   session_id: string;
   vehicle_id: string;
@@ -92,6 +104,13 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
         transition: none !important;
         animation: none !important;
       }
+      .recharts-cartesian-axis-tick {
+        transition: none !important;
+        animation: none !important;
+      }
+      .recharts-cartesian-axis {
+        transition: none !important;
+      }
     `;
     document.head.appendChild(style);
     
@@ -130,9 +149,43 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
       case 'started':
         return 'warning';
       case 'completed':
-        return 'success';
+        return 'success'; // Keep green for completed
       default:
         return 'default';
+    }
+  };
+
+  const getStatusChipStyle = (status: string) => {
+    switch (status) {
+      case 'en_route':
+        return {
+          backgroundColor: colorPalette.primary,
+          color: 'white',
+          '&:hover': {
+            backgroundColor: colorPalette.primaryDark,
+          }
+        };
+      case 'started':
+        return {
+          backgroundColor: colorPalette.primaryLight,
+          color: 'white',
+          '&:hover': {
+            backgroundColor: colorPalette.primary,
+          }
+        };
+      case 'completed':
+        return {
+          backgroundColor: '#4caf50', // Keep green for completed
+          color: 'white',
+          '&:hover': {
+            backgroundColor: '#388e3c',
+          }
+        };
+      default:
+        return {
+          backgroundColor: '#9e9e9e',
+          color: 'white',
+        };
     }
   };
 
@@ -358,7 +411,7 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
                 <Line 
                   type="monotone" 
                   dataKey="distance" 
-                  stroke="#1976d2" 
+                  stroke={colorPalette.primary}
                   strokeWidth={2}
                   style={{ transition: 'none' }}
                 />
@@ -394,12 +447,12 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
                 <Tooltip />
                 <Bar 
                   dataKey="active" 
-                  fill="#1976d2"
+                  fill={colorPalette.primaryVeryDark}
                   style={{ transition: 'none' }}
                 />
                 <Bar 
                   dataKey="completed" 
-                  fill="#4caf50"
+                  fill={colorPalette.tertiary}
                   style={{ transition: 'none' }}
                 />
               </BarChart>
@@ -438,11 +491,11 @@ export default function Overview({ sessions, stats, chartData, trends, loading, 
                       <TableCell>{session.vehicle_id}</TableCell>
                       <TableCell>{session.order_id}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={getStatusLabel(session.status)}
-                          color={getStatusColor(session.status) as 'primary' | 'warning' | 'success' | 'default'}
-                          size="small"
-                        />
+                                              <Chip
+                        label={getStatusLabel(session.status)}
+                        sx={getStatusChipStyle(session.status)}
+                        size="small"
+                      />
                       </TableCell>
                       <TableCell>{session.latest_activity}</TableCell>
                     </TableRow>

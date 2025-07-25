@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PacketPulse Dashboard",
+  title: "PacketPulse",
   description: "Real-time vehicle data monitoring and analytics platform",
+  icons: {
+    icon: '/images/favicon.png',
+  },
 };
 
 export default function RootLayout({
@@ -24,6 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/images/favicon.png" type="image/png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}

@@ -5,6 +5,18 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Color palette based on #fe4e50
+const colorPalette = {
+  primary: '#fe4e50', // Main brand color
+  primaryLight: '#ff6b6d', // Lighter shade
+  primaryDark: '#d13a3c', // Darker shade
+  primaryVeryDark: '#a82d2f', // Very dark for Active status
+  secondary: '#ff8a80', // Complementary light
+  tertiary: '#ffb3a7', // Very light shade
+  accent: '#ff6b6d', // Medium light
+  muted: '#ffcdd2', // Very light for backgrounds
+};
+
 // Fix Leaflet icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -67,9 +79,9 @@ const createCustomIcon = (color: string, icon: string) => {
   });
 };
 
-const vehicleIcon = createCustomIcon('#1976d2', '🚗');
-const pickupIcon = createCustomIcon('#4caf50', '📦');
-const deliveryIcon = createCustomIcon('#f44336', '🛍️');
+const vehicleIcon = createCustomIcon(colorPalette.primary, '🛵');
+const pickupIcon = createCustomIcon(colorPalette.secondary, '📦');
+const deliveryIcon = createCustomIcon(colorPalette.accent, '🛍️');
 
 // Custom component to handle map centering
 function MapController({ selectedSession }: { selectedSession: Session | null }) {

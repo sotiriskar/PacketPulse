@@ -25,6 +25,18 @@ import {
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 
+// Color palette based on #fe4e50
+const colorPalette = {
+  primary: '#fe4e50', // Main brand color
+  primaryLight: '#ff6b6d', // Lighter shade
+  primaryDark: '#d13a3c', // Darker shade
+  primaryVeryDark: '#a82d2f', // Very dark for Active status
+  secondary: '#ff8a80', // Complementary light
+  tertiary: '#ffb3a7', // Very light shade
+  accent: '#ff6b6d', // Medium light
+  muted: '#ffcdd2', // Very light for backgrounds
+};
+
 // Create a client-only map component
 const MapComponent = dynamic(() => import('./MapComponent').then(mod => ({ default: mod.default })), {
   ssr: false,
@@ -248,7 +260,19 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 }}
               >
                 <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
-                  <Box component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#1976d2', mr: 0.5 }} />
+                  <Box component="span" sx={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    width: 20, 
+                    height: 20, 
+                    backgroundColor: colorPalette.primary, 
+                    borderRadius: '50%',
+                    border: '1px solid white',
+                    mr: 0.5 
+                  }}>
+                    🛵
+                  </Box>
                   Vehicle
                 </Typography>
                 <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
@@ -258,7 +282,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     justifyContent: 'center',
                     width: 20, 
                     height: 20, 
-                    backgroundColor: '#4caf50', 
+                    backgroundColor: colorPalette.secondary, 
                     borderRadius: '50%',
                     border: '1px solid white',
                     mr: 0.5 
@@ -274,7 +298,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     justifyContent: 'center',
                     width: 20, 
                     height: 20, 
-                    backgroundColor: '#f44336', 
+                    backgroundColor: colorPalette.primaryVeryDark, 
                     borderRadius: '50%',
                     border: '1px solid white',
                     mr: 0.5 
@@ -376,7 +400,13 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                       </Box>
                       <Chip
                         label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
-                        color={session.order_status === 'en_route' ? 'primary' : 'warning'}
+                        sx={{
+                          backgroundColor: session.order_status === 'en_route' ? colorPalette.primary : colorPalette.primaryLight,
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: session.order_status === 'en_route' ? colorPalette.primaryDark : colorPalette.primary,
+                          }
+                        }}
                         size="small"
                       />
                     </Box>
@@ -423,7 +453,13 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                   <Typography variant="caption" color="text.secondary">Status</Typography>
                   <Chip
                     label={selectedSession.order_status === 'en_route' ? 'En Route' : 'Started'}
-                    color={selectedSession.order_status === 'en_route' ? 'primary' : 'warning'}
+                    sx={{
+                      backgroundColor: selectedSession.order_status === 'en_route' ? colorPalette.primary : colorPalette.primaryLight,
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: selectedSession.order_status === 'en_route' ? colorPalette.primaryDark : colorPalette.primary,
+                      }
+                    }}
                     size="small"
                   />
                 </Box>
@@ -488,9 +524,15 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                   <Typography variant="caption" color="text.secondary">Location Type</Typography>
                   <Chip
                     label={selectedCoordinates.type === 'pickup' ? 'Pickup' : selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'}
-                    color={selectedCoordinates.type === 'pickup' ? 'success' : selectedCoordinates.type === 'delivery' ? 'error' : 'primary'}
+                    sx={{
+                      backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.secondary : selectedCoordinates.type === 'delivery' ? colorPalette.primaryVeryDark : colorPalette.primary,
+                      color: 'white',
+                      alignSelf: 'flex-start',
+                      '&:hover': {
+                        backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.tertiary : selectedCoordinates.type === 'delivery' ? colorPalette.primaryDark : colorPalette.primaryDark,
+                      }
+                    }}
                     size="small"
-                    sx={{ alignSelf: 'flex-start' }}
                   />
                 </Box>
                 <Box>

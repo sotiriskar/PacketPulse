@@ -82,4 +82,9 @@ export class ApiService {
   static async getHealth(): Promise<ApiResponse<unknown>> {
     return this.request('/health');
   }
+
+  // Get analytics data
+  static async getAnalytics(period: string = 'day'): Promise<ApiResponse<unknown>> {
+    return this.request(`/analytics?period=${period}`);
+  }
 }

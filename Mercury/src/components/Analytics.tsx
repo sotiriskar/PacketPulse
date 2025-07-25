@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -15,11 +15,33 @@ import {
   ListItemAvatar,
   ListItemText,
   Divider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import {
-  Star
+  Star,
+  Today,
+  ViewWeek,
+  CalendarMonth,
+  CalendarViewDay,
+  EmojiEvents,
+  WorkspacePremium,
+  MilitaryTech,
 } from '@mui/icons-material';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { ApiService } from '../utils/api';
+
+// Color palette based on #fe4e50
+const colorPalette = {
+  primary: '#fe4e50', // Main brand color
+  primaryLight: '#ff6b6d', // Lighter shade
+  primaryDark: '#d13a3c', // Darker shade
+  primaryVeryDark: '#a82d2f', // Very dark for Active status
+  secondary: '#ff8a80', // Complementary light
+  tertiary: '#ffb3a7', // Very light shade
+  accent: '#ff6b6d', // Medium light
+  muted: '#ffcdd2', // Very light for backgrounds
+};
 
 interface Session {
   session_id: string;
@@ -51,99 +73,129 @@ interface AnalyticsProps {
   error: string | null;
 }
 
-// Enhanced mock data with more realistic patterns
-const mockSessions: Session[] = [
-  {
-    session_id: 'SESS001',
-    vehicle_id: 'VH001',
-    order_id: 'ORD001',
-    order_status: 'en_route',
-    start_time: '2024-01-15T08:00:00Z',
-    last_update_time: '2024-01-15T10:30:00Z',
-    distance_to_destination_km: 12.5,
-    elapsed_time: '2h 30m',
-    avg_speed_kmh: 45.2,
-    eta: '11:45 AM',
-  },
-  {
-    session_id: 'SESS002',
-    vehicle_id: 'VH002',
-    order_id: 'ORD002',
-    order_status: 'started',
-    start_time: '2024-01-15T09:15:00Z',
-    last_update_time: '2024-01-15T10:45:00Z',
-    distance_to_destination_km: 8.3,
-    elapsed_time: '1h 30m',
-    avg_speed_kmh: 38.7,
-    eta: '11:20 AM',
-  },
-  {
-    session_id: 'SESS003',
-    vehicle_id: 'VH003',
-    order_id: 'ORD003',
-    order_status: 'en_route',
-    start_time: '2024-01-15T07:30:00Z',
-    last_update_time: '2024-01-15T10:30:00Z',
-    distance_to_destination_km: 15.2,
-    elapsed_time: '3h 00m',
-    avg_speed_kmh: 52.1,
-    eta: '11:15 AM',
-  },
-  {
-    session_id: 'SESS004',
-    vehicle_id: 'VH004',
-    order_id: 'ORD004',
-    order_status: 'started',
-    start_time: '2024-01-15T08:45:00Z',
-    last_update_time: '2024-01-15T10:30:00Z',
-    distance_to_destination_km: 6.8,
-    elapsed_time: '1h 45m',
-    avg_speed_kmh: 41.3,
-    eta: '11:30 AM',
-  },
-  {
-    session_id: 'SESS005',
-    vehicle_id: 'VH005',
-    order_id: 'ORD005',
-    order_status: 'en_route',
-    start_time: '2024-01-15T06:00:00Z',
-    last_update_time: '2024-01-15T10:30:00Z',
-    distance_to_destination_km: 22.1,
-    elapsed_time: '4h 30m',
-    avg_speed_kmh: 35.8,
-    eta: '12:00 PM',
-  },
-];
 
-const mockStats: Stats = {
-  total_sessions: 156,
-  active_sessions: 5,
-  total_distance_km: 1247.8,
-  avg_speed_kmh: 42.6,
-  total_vehicles: 25,
-  vehicles_in_use: 5,
-  total_completed_trips: 151,
-};
 
 export default function Analytics({ sessions, stats, loading, error }: AnalyticsProps) {
-  // Use mock data instead of props
-  const displaySessions = mockSessions;
-  const displayStats = mockStats;
+  // State for time period and analytics data
+  const [timePeriod, setTimePeriod] = useState('day');
+  const [analyticsData, setAnalyticsData] = useState<{
+    completionRate: number;
+    peakHourActivity: {
+      peakHour: string;
+      peakCount: number;
+    };
+    peakHourData: Array<{
+      hour: string;
+      deliveries: number;
+    }>;
+    avgDurationMinutes: number;
+    avgDistanceKm: number;
+    durationDistribution: Array<{
+      duration: string;
+      count: number;
+    }>;
+    completionTimeByPeriod: Array<{
+      timeUnit: string;
+      avgTime: number;
+    }>;
+    fleetStatus: {
+      activeVehicles: number;
+      availableVehicles: number;
+      maintenanceVehicles: number;
+    };
+    period: string;
+    topPerformers: Array<{
+      vehicleId: string;
+      trips: number;
+      totalKm: number;
+      completion: number;
+      firstSeen: string;
+      lastUpdated: string;
+    }>;
+  } | null>(null);
 
-  // Peak hour analysis data (24-hour cycle)
-  const peakHourData = [
-    { hour: '00:00', deliveries: 2, idle_vehicles: 18 },
-    { hour: '02:00', deliveries: 1, idle_vehicles: 19 },
-    { hour: '04:00', deliveries: 0, idle_vehicles: 20 },
-    { hour: '06:00', deliveries: 3, idle_vehicles: 17 },
-    { hour: '08:00', deliveries: 8, idle_vehicles: 12 },
-    { hour: '10:00', deliveries: 12, idle_vehicles: 8 },
-    { hour: '12:00', deliveries: 15, idle_vehicles: 5 },
-    { hour: '14:00', deliveries: 14, idle_vehicles: 6 },
-    { hour: '16:00', deliveries: 16, idle_vehicles: 4 },
-    { hour: '18:00', deliveries: 13, idle_vehicles: 7 },
-    { hour: '20:00', deliveries: 9, idle_vehicles: 11 },
-    { hour: '22:00', deliveries: 4, idle_vehicles: 16 },
+  // Add CSS to prevent chart text flickering
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .recharts-text {
+        transition: none !important;
+        animation: none !important;
+      }
+      .recharts-cartesian-axis-tick-value {
+        transition: none !important;
+        animation: none !important;
+      }
+      .recharts-cartesian-axis-label {
+        transition: none !important;
+        animation: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+
+
+  // Fetch analytics data when time period changes
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      setAnalyticsLoading(true);
+      setAnalyticsError(null);
+      
+      try {
+        const response = await ApiService.getAnalytics(timePeriod);
+        if (response.success && response.data) {
+          setAnalyticsData(response.data as any);
+        } else {
+          setAnalyticsError(response.message || 'Failed to fetch analytics data');
+        }
+      } catch (err) {
+        setAnalyticsError('Failed to fetch analytics data');
+        console.error('Error fetching analytics:', err);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [timePeriod]);
+
+  // Handle time period change
+  const handleTimePeriodChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newPeriod: string | null,
+  ) => {
+    if (newPeriod !== null) {
+      setTimePeriod(newPeriod);
+    }
+  };
+
+  // Helper function to calculate next logical ceiling
+  const getNextLogicalCeiling = (maxValue: number) => {
+    if (maxValue <= 0) return 10;
+    return Math.ceil(maxValue * 2);
+  };
+
+  // Peak hour analysis data (24-hour cycle) - will be replaced by real data
+  const peakHourData = analyticsData ? analyticsData.peakHourData : [
+    { hour: '00:00', deliveries: 2 },
+    { hour: '02:00', deliveries: 1 },
+    { hour: '04:00', deliveries: 0 },
+    { hour: '06:00', deliveries: 3 },
+    { hour: '08:00', deliveries: 8 },
+    { hour: '10:00', deliveries: 12 },
+    { hour: '12:00', deliveries: 15 },
+    { hour: '14:00', deliveries: 14 },
+    { hour: '16:00', deliveries: 16 },
+    { hour: '18:00', deliveries: 13 },
+    { hour: '20:00', deliveries: 9 },
+    { hour: '22:00', deliveries: 4 },
   ];
 
   // Idle time analysis data
@@ -168,47 +220,6 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
     { period: 'Late Night (23-6)', activity: 8, efficiency: 75 },
   ];
 
-  // Top performers data
-  const topPerformers = [
-    {
-      id: 'VH001',
-      name: 'Vehicle Alpha',
-      driver: 'John Smith',
-      completionRate: 98.5,
-      avgSpeed: 48.2,
-      totalDeliveries: 156,
-      badges: ['Speed Demon', 'Perfect Record'],
-      avatar: '🚛',
-    },
-    {
-      id: 'VH003',
-      name: 'Vehicle Beta',
-      driver: 'Sarah Johnson',
-      completionRate: 96.8,
-      avgSpeed: 45.7,
-      totalDeliveries: 142,
-      badges: ['Efficiency Expert', 'Safety First'],
-      avatar: '🚚',
-    },
-    {
-      id: 'VH007',
-      name: 'Vehicle Gamma',
-      driver: 'Mike Chen',
-      completionRate: 95.2,
-      avgSpeed: 43.1,
-      totalDeliveries: 128,
-      badges: ['Consistent Performer'],
-      avatar: '🚛',
-    },
-  ];
-
-  // Fleet utilization data
-  const fleetUtilizationData = [
-    { name: 'Active', value: displayStats.vehicles_in_use, color: '#2196f3' },
-    { name: 'Available', value: Math.max(0, displayStats.total_vehicles - displayStats.vehicles_in_use), color: '#4caf50' },
-    { name: 'Maintenance', value: Math.floor(displayStats.total_vehicles * 0.1), color: '#ff9800' },
-  ];
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -224,6 +235,59 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           {error}
         </Alert>
       )}
+
+      {analyticsError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {analyticsError}
+        </Alert>
+      )}
+
+      {/* Time Period Filter */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+        <ToggleButtonGroup
+          value={timePeriod}
+          exclusive
+          onChange={handleTimePeriodChange}
+          aria-label="time period"
+          sx={{
+            backgroundColor: 'white',
+            borderRadius: 2,
+            '& .MuiToggleButton-root': {
+              border: 'none',
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+                          '&.Mui-selected': {
+              backgroundColor: '#fe4e50',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#e63946',
+              },
+            },
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+              },
+            },
+          }}
+        >
+          <ToggleButton value="day" aria-label="day">
+            <Today sx={{ mr: 1, fontSize: 20 }} />
+            Day
+          </ToggleButton>
+          <ToggleButton value="week" aria-label="week">
+            <ViewWeek sx={{ mr: 1, fontSize: 20 }} />
+            Week
+          </ToggleButton>
+          <ToggleButton value="month" aria-label="month">
+            <CalendarMonth sx={{ mr: 1, fontSize: 20 }} />
+            Month
+          </ToggleButton>
+          <ToggleButton value="year" aria-label="year">
+            <CalendarViewDay sx={{ mr: 1, fontSize: 20 }} />
+            Year
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
 
       {/* Key Metrics - Keep Completion Rate */}
       <Box sx={{ 
@@ -249,12 +313,15 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               alignItems: 'center', 
               justifyContent: 'center' 
             }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {Math.round((displayStats.total_completed_trips / displayStats.total_sessions) * 100)}%
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 500 }}>
-                +1.8% from last week
-              </Typography>
+              {analyticsLoading ? (
+                <CircularProgress size={40} />
+              ) : (
+                <>
+                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                    {analyticsData ? `${analyticsData.completionRate}%` : '0%'}
+                  </Typography>
+                </>
+              )}
             </Box>
           </CardContent>
         </Card>
@@ -276,12 +343,15 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               alignItems: 'center', 
               justifyContent: 'center' 
             }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                16
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#2196f3', fontWeight: 500 }}>
-                4-5 PM (Peak)
-              </Typography>
+              {analyticsLoading ? (
+                <CircularProgress size={40} />
+              ) : (
+                <>
+                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                    {analyticsData ? analyticsData.peakHourActivity.peakHour : '12am-1am'}
+                  </Typography>
+                </>
+              )}
             </Box>
           </CardContent>
         </Card>
@@ -294,7 +364,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
         }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
-              Avg Idle Time
+              Avg Duration
             </Typography>
             <Box sx={{ 
               flex: 1, 
@@ -303,12 +373,15 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               alignItems: 'center', 
               justifyContent: 'center' 
             }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                4.8h
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#ff9800', fontWeight: 500 }}>
-                Per vehicle/day
-              </Typography>
+              {analyticsLoading ? (
+                <CircularProgress size={40} />
+              ) : (
+                <>
+                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                    {analyticsData ? `${analyticsData.avgDurationMinutes}m` : '0m'}
+                  </Typography>
+                </>
+              )}
             </Box>
           </CardContent>
         </Card>
@@ -321,7 +394,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
         }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
-              Fleet Utilization
+              Avg Distance
             </Typography>
             <Box sx={{ 
               flex: 1, 
@@ -330,46 +403,57 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               alignItems: 'center', 
               justifyContent: 'center' 
             }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                {Math.round((displayStats.vehicles_in_use / displayStats.total_vehicles) * 100)}%
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 500 }}>
-                +5.2% from last week
-              </Typography>
+              {analyticsLoading ? (
+                <CircularProgress size={40} />
+              ) : (
+                <>
+                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
+                    {analyticsData ? `${analyticsData.avgDistanceKm}km` : '0km'}
+                  </Typography>
+                </>
+              )}
             </Box>
           </CardContent>
         </Card>
       </Box>
 
-      {/* Peak Hour Analysis */}
+      {/* Peak Hour Periods */}
       <Card sx={{ backgroundColor: 'white', mb: 3, borderRadius: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
-            Peak Hour Analysis
+            Peak Hour Periods
           </Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={peakHourData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-              <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-              <XAxis 
-                dataKey="hour" 
-                style={{ 
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  transition: 'none'
-                }}
-              />
-              <YAxis 
-                style={{ 
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  transition: 'none'
-                }}
-              />
-              <RechartsTooltip />
-              <Area type="monotone" dataKey="deliveries" stackId="1" stroke="#2196f3" fill="#2196f3" fillOpacity={0.6} name="Deliveries" />
-              <Area type="monotone" dataKey="idle_vehicles" stackId="2" stroke="#ff9800" fill="#ff9800" fillOpacity={0.6} name="Idle" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {analyticsLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={peakHourData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+                                  <XAxis 
+                    dataKey="hour" 
+                    style={{ 
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      transition: 'none'
+                    }}
+                    interval={2}
+                    minTickGap={10}
+                  />
+                <YAxis 
+                  style={{ 
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    transition: 'none'
+                  }}
+                  domain={[0, getNextLogicalCeiling(Math.max(...peakHourData.map(d => d.deliveries))) || 20]}
+                />
+                <RechartsTooltip />
+                                  <Area type="monotone" dataKey="deliveries" stroke={colorPalette.primary} fill={colorPalette.primary} fillOpacity={0.6} name="Deliveries" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -380,183 +464,278 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
         gap: 3, 
         mb: 4 
       }}>
-        {/* Idle Time Analysis */}
+        {/* Duration Distribution */}
         <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
-              Idle Time Analysis
+              Duration Distribution
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={idleTimeData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                <XAxis 
-                  dataKey="day" 
-                  style={{ 
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    transition: 'none'
-                  }}
-                />
-                <YAxis 
-                  style={{ 
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    transition: 'none'
-                  }}
-                />
-                <RechartsTooltip />
-                <Bar dataKey="idle_hours" fill="#ff9800" name="Hours" />
-              </BarChart>
-            </ResponsiveContainer>
+            {analyticsLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData ? analyticsData.durationDistribution : []} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+                  <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+                  <XAxis 
+                    dataKey="duration" 
+                    style={{ 
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      transition: 'none'
+                    }}
+                  />
+                  <YAxis 
+                    style={{ 
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      transition: 'none'
+                    }}
+                    domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.durationDistribution.map(d => d.count) : [0]))) || 20]}
+                  />
+                  <RechartsTooltip />
+                  <Bar dataKey="count" fill={colorPalette.primaryVeryDark} name="Sessions" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Peak Activity Periods */}
+        {/* Average Completion Time by Hour */}
         <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
-              Peak Activity Periods
+              Average Completion Time by {timePeriod === 'day' ? 'Hour' : timePeriod === 'week' ? 'Day' : timePeriod === 'month' ? 'Day of Month' : 'Month'}
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={peakActivityData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                <XAxis 
-                  dataKey="period" 
-                  style={{ 
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    transition: 'none'
-                  }}
-                />
-                <YAxis 
-                  style={{ 
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    transition: 'none'
-                  }}
-                />
-                <RechartsTooltip />
-                <Line type="monotone" dataKey="activity" stroke="#2196f3" strokeWidth={3} name="Activity" />
-                <Line type="monotone" dataKey="efficiency" stroke="#4caf50" strokeWidth={2} name="Efficiency" />
-              </LineChart>
-            </ResponsiveContainer>
+            <Box sx={{ 
+              '& .recharts-cartesian-axis-tick': { 
+                transition: 'none !important',
+                animation: 'none !important'
+              },
+              '& .recharts-cartesian-axis': {
+                transition: 'none !important'
+              },
+              '& .recharts-text': {
+                transition: 'none !important',
+                animation: 'none !important'
+              }
+            }}>
+              {analyticsLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={analyticsData ? analyticsData.completionTimeByPeriod : []} 
+                  margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
+                >
+                  <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+                  <XAxis 
+                    dataKey="timeUnit" 
+                    style={{ 
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      transition: 'none'
+                    }}
+                    tick={{ fontSize: 12 }}
+                    interval={timePeriod === 'day' ? 2 : timePeriod === 'month' ? 2 : 0}
+                    minTickGap={10}
+                  />
+                  <YAxis 
+                    style={{ 
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      transition: 'none'
+                    }}
+                    domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.completionTimeByPeriod.map((d: any) => d.avgTime) : [0]))) || 20]}
+                  />
+                  <RechartsTooltip />
+                  <Bar 
+                    dataKey="avgTime" 
+                    fill={colorPalette.tertiary}
+                    style={{ transition: 'none' }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+              )}
+            </Box>
           </CardContent>
         </Card>
       </Box>
 
       {/* Top Performers */}
       <Card sx={{ backgroundColor: 'white', mb: 4, borderRadius: 3 }}>
-        <CardContent sx={{ p: 3 }}>
+        <CardContent sx={{ p: 4 }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
             Top Performers
           </Typography>
           <List>
-            {topPerformers.map((performer, index) => (
-              <React.Fragment key={performer.id}>
-                <ListItem alignItems="flex-start">
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#2196f3' }}>
-                      {performer.avatar}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="subtitle1" fontWeight="bold">
-                          {performer.name}
-                        </Typography>
-                        {index === 0 && <Star sx={{ color: '#ffd700', fontSize: 20 }} />}
-                      </Box>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Driver: {performer.driver} • {performer.totalDeliveries} deliveries
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                          <Chip 
-                            label={`${performer.completionRate}% completion`} 
-                            size="small" 
-                            color="success" 
-                            variant="outlined"
-                          />
-                          <Chip 
-                            label={`${performer.avgSpeed} km/h avg`} 
-                            size="small" 
-                            color="primary" 
-                            variant="outlined"
-                          />
+            {analyticsData && analyticsData.topPerformers && analyticsData.topPerformers.length > 0 ? (
+              analyticsData.topPerformers.map((performer, index) => (
+                <React.Fragment key={performer.vehicleId}>
+                  <ListItem alignItems="flex-start">
+                    <ListItemAvatar>
+                      <Avatar sx={{ 
+                        bgcolor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#2196f3',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {index === 0 ? <EmojiEvents sx={{ color: 'white', fontSize: 20 }} /> : index === 1 ? <WorkspacePremium sx={{ color: 'white', fontSize: 20 }} /> : index === 2 ? <MilitaryTech sx={{ color: 'white', fontSize: 20 }} /> : index + 1}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            Vehicle ({performer.vehicleId})
+                          </Typography>
+                          {index === 0 && <Star sx={{ color: '#ffd700', fontSize: 20 }} />}
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-                          {performer.badges.map((badge, badgeIndex) => (
+                      }
+                      secondary={
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            {performer.trips} trips • {performer.totalKm.toFixed(1)} km total
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                             <Chip 
-                              key={badgeIndex}
-                              label={badge} 
+                              label={`${(performer.completion * 100).toFixed(0)}% completion`} 
                               size="small" 
                               sx={{ 
-                                fontSize: '0.7rem',
-                                backgroundColor: index === 0 ? '#fff3cd' : '#e3f2fd',
-                                color: index === 0 ? '#856404' : '#1976d2'
+                                borderColor: colorPalette.primary,
+                                color: colorPalette.primary
                               }}
+                              variant="outlined"
                             />
-                          ))}
+                            <Chip 
+                              label={`${(performer.totalKm / performer.trips).toFixed(1)} km/trip`} 
+                              size="small" 
+                              sx={{ 
+                                borderColor: colorPalette.primary,
+                                color: colorPalette.primary
+                              }}
+                              variant="outlined"
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                            {index === 0 && (
+                              <>
+                                <Chip 
+                                  label="Champion" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#fff3cd',
+                                    color: '#856404'
+                                  }}
+                                />
+                                <Chip 
+                                  label="MVP" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#e8f5e8',
+                                    color: '#2e7d32'
+                                  }}
+                                />
+                              </>
+                            )}
+                            {index === 1 && (
+                              <>
+                                <Chip 
+                                  label="Runner Up" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#e3f2fd',
+                                    color: '#1976d2'
+                                  }}
+                                />
+                                <Chip 
+                                  label="Consistent" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#f3e5f5',
+                                    color: '#7b1fa2'
+                                  }}
+                                />
+                              </>
+                            )}
+                            {index === 2 && (
+                              <>
+                                <Chip 
+                                  label="Bronze" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#fff3e0',
+                                    color: '#f57c00'
+                                  }}
+                                />
+                                <Chip 
+                                  label="Reliable" 
+                                  size="small" 
+                                  sx={{ 
+                                    fontSize: '0.7rem',
+                                    backgroundColor: '#e0f2f1',
+                                    color: '#00695c'
+                                  }}
+                                />
+                              </>
+                            )}
+                          </Box>
                         </Box>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-                {index < topPerformers.length - 1 && <Divider variant="inset" component="li" />}
-              </React.Fragment>
-            ))}
+                      }
+                    />
+                  </ListItem>
+                  {index < analyticsData.topPerformers.length - 1 && <Divider variant="inset" component="li" />}
+                </React.Fragment>
+              ))
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                No top performers data available.
+              </Typography>
+            )}
           </List>
         </CardContent>
       </Card>
 
       {/* Fleet Status */}
-      <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
+      <Card sx={{ backgroundColor: 'white', mb: 4, borderRadius: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
             Fleet Status
           </Typography>
-                      <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, 
-              gap: 15 
-            }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="subtitle2" color="primary.main">
-                  In Use
-                </Typography>
-                <Typography variant="h4" sx={{ mt: 1 }}>
-                  {displayStats.vehicles_in_use}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Active vehicles
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="subtitle2" color="success.main">
-                  Available
-                </Typography>
-                <Typography variant="h4" sx={{ mt: 1 }}>
-                  {displayStats.total_vehicles - displayStats.vehicles_in_use}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Ready for dispatch
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="subtitle2" color="warning.main">
-                  Maintenance
-                </Typography>
-                <Typography variant="h4" sx={{ mt: 1 }}>
-                  2
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Under service
-                </Typography>
-              </Box>
+          <Box display="flex" justifyContent="space-evenly" alignItems="center" mt={2} gap={6}>
+            <Box textAlign="center">
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.primaryVeryDark}>
+                {analyticsData ? analyticsData.fleetStatus.activeVehicles : 0}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Active
+              </Typography>
             </Box>
+            <Box textAlign="center">
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.secondary}>
+                {analyticsData ? analyticsData.fleetStatus.availableVehicles : 0}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Available
+              </Typography>
+            </Box>
+            <Box textAlign="center">
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.accent}>
+                {analyticsData ? analyticsData.fleetStatus.maintenanceVehicles : 0}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Maintenance
+              </Typography>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
     </Box>
