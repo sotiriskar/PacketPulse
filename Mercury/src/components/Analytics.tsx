@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -17,6 +17,8 @@ import {
   Divider,
   ToggleButton,
   ToggleButtonGroup,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Star,
@@ -28,19 +30,19 @@ import {
   WorkspacePremium,
   MilitaryTech,
 } from '@mui/icons-material';
-import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { ApiService } from '../utils/api';
 
 // Color palette based on #fe4e50
 const colorPalette = {
-  primary: '#fe4e50', // Main brand color
-  primaryLight: '#ff6b6d', // Lighter shade
-  primaryDark: '#d13a3c', // Darker shade
-  primaryVeryDark: '#a82d2f', // Very dark for Active status
-  secondary: '#ff8a80', // Complementary light
-  tertiary: '#ffb3a7', // Very light shade
-  accent: '#ff6b6d', // Medium light
-  muted: '#ffcdd2', // Very light for backgrounds
+  primary: '#fe4e50',
+  primaryLight: '#ff6b6d',
+  primaryDark: '#d13a3c',
+  primaryVeryDark: '#a82d2f',
+  secondary: '#ff8a80',
+  tertiary: '#ffb3a7',
+  accent: '#ff6b6d',
+  muted: '#ffcdd2',
 };
 
 interface Session {
@@ -73,10 +75,11 @@ interface AnalyticsProps {
   error: string | null;
 }
 
-
-
 export default function Analytics({ sessions, stats, loading, error }: AnalyticsProps) {
-  // State for time period and analytics data
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
   const [timePeriod, setTimePeriod] = useState('day');
   const [analyticsData, setAnalyticsData] = useState<{
     completionRate: number;
@@ -114,33 +117,8 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
     }>;
   } | null>(null);
 
-  // Add CSS to prevent chart text flickering
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .recharts-text {
-        transition: none !important;
-        animation: none !important;
-      }
-      .recharts-cartesian-axis-tick-value {
-        transition: none !important;
-        animation: none !important;
-      }
-      .recharts-cartesian-axis-label {
-        transition: none !important;
-        animation: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
-
-
 
   // Fetch analytics data when time period changes
   useEffect(() => {
@@ -179,46 +157,26 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
   // Helper function to calculate next logical ceiling
   const getNextLogicalCeiling = (maxValue: number) => {
     if (maxValue <= 0) return 10;
-    return Math.ceil(maxValue * 2);
+    return Math.ceil(maxValue * 1.2);
   };
 
-  // Peak hour analysis data (24-hour cycle) - will be replaced by real data
-  const peakHourData = analyticsData ? analyticsData.peakHourData : [
-    { hour: '00:00', deliveries: 2 },
-    { hour: '02:00', deliveries: 1 },
-    { hour: '04:00', deliveries: 0 },
-    { hour: '06:00', deliveries: 3 },
-    { hour: '08:00', deliveries: 8 },
-    { hour: '10:00', deliveries: 12 },
-    { hour: '12:00', deliveries: 15 },
-    { hour: '14:00', deliveries: 14 },
-    { hour: '16:00', deliveries: 16 },
-    { hour: '18:00', deliveries: 13 },
-    { hour: '20:00', deliveries: 9 },
-    { hour: '22:00', deliveries: 4 },
-  ];
-
-  // Idle time analysis data
-  const idleTimeData = [
-    { day: 'Mon', idle_hours: 4.2, utilization: 82.5 },
-    { day: 'Tue', idle_hours: 3.8, utilization: 84.2 },
-    { day: 'Wed', idle_hours: 5.1, utilization: 78.7 },
-    { day: 'Thu', idle_hours: 3.5, utilization: 85.4 },
-    { day: 'Fri', idle_hours: 4.8, utilization: 80.0 },
-    { day: 'Sat', idle_hours: 6.2, utilization: 74.2 },
-    { day: 'Sun', idle_hours: 7.5, utilization: 68.8 },
-  ];
-
-  // Peak activity periods data
-  const peakActivityData = [
-    { period: 'Early AM (6-9)', activity: 23, efficiency: 85 },
-    { period: 'Morning (9-12)', activity: 41, efficiency: 92 },
-    { period: 'Lunch (12-14)', activity: 38, efficiency: 88 },
-    { period: 'Afternoon (14-17)', activity: 45, efficiency: 90 },
-    { period: 'Evening (17-20)', activity: 32, efficiency: 87 },
-    { period: 'Night (20-23)', activity: 18, efficiency: 82 },
-    { period: 'Late Night (23-6)', activity: 8, efficiency: 75 },
-  ];
+  // Memoized peak hour data
+  const peakHourData = useMemo(() => {
+    return analyticsData ? analyticsData.peakHourData : [
+      { hour: '00:00', deliveries: 2 },
+      { hour: '02:00', deliveries: 1 },
+      { hour: '04:00', deliveries: 0 },
+      { hour: '06:00', deliveries: 3 },
+      { hour: '08:00', deliveries: 8 },
+      { hour: '10:00', deliveries: 12 },
+      { hour: '12:00', deliveries: 15 },
+      { hour: '14:00', deliveries: 14 },
+      { hour: '16:00', deliveries: 16 },
+      { hour: '18:00', deliveries: 13 },
+      { hour: '20:00', deliveries: 9 },
+      { hour: '22:00', deliveries: 4 },
+    ];
+  }, [analyticsData]);
 
   if (loading) {
     return (
@@ -229,7 +187,13 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
   }
 
   return (
-    <Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <Box sx={{ 
+      p: { xs: 2, sm: 3 }, 
+      backgroundColor: '#f5f5f5', 
+      height: '100%',
+      maxWidth: '100%',
+      overflow: 'auto'
+    }}>
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
@@ -249,21 +213,23 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           exclusive
           onChange={handleTimePeriodChange}
           aria-label="time period"
+          size={isMobile ? "small" : "medium"}
           sx={{
             backgroundColor: 'white',
             borderRadius: 2,
             '& .MuiToggleButton-root': {
               border: 'none',
               borderRadius: 2,
-              px: 3,
-              py: 1,
-                          '&.Mui-selected': {
-              backgroundColor: '#fe4e50',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#e63946',
+              px: { xs: 2, sm: 3 },
+              py: { xs: 0.5, sm: 1 },
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              '&.Mui-selected': {
+                backgroundColor: colorPalette.primary,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: colorPalette.primaryDark,
+                },
               },
-            },
               '&:hover': {
                 backgroundColor: '#f5f5f5',
               },
@@ -271,39 +237,61 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           }}
         >
           <ToggleButton value="day" aria-label="day">
-            <Today sx={{ mr: 1, fontSize: 20 }} />
-            Day
+            <Today sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: 16, sm: 20 } }} />
+            {!isMobile && 'Day'}
           </ToggleButton>
           <ToggleButton value="week" aria-label="week">
-            <ViewWeek sx={{ mr: 1, fontSize: 20 }} />
-            Week
+            <ViewWeek sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: 16, sm: 20 } }} />
+            {!isMobile && 'Week'}
           </ToggleButton>
           <ToggleButton value="month" aria-label="month">
-            <CalendarMonth sx={{ mr: 1, fontSize: 20 }} />
-            Month
+            <CalendarMonth sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: 16, sm: 20 } }} />
+            {!isMobile && 'Month'}
           </ToggleButton>
           <ToggleButton value="year" aria-label="year">
-            <CalendarViewDay sx={{ mr: 1, fontSize: 20 }} />
-            Year
+            <CalendarViewDay sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: 16, sm: 20 } }} />
+            {!isMobile && 'Year'}
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
-      {/* Key Metrics - Keep Completion Rate */}
+      {/* Key Metrics */}
       <Box sx={{ 
         display: 'grid', 
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, 
-        gap: 3, 
-        mb: 4 
+        gridTemplateColumns: { 
+          xs: 'repeat(2, 1fr)', 
+          sm: 'repeat(2, 1fr)', 
+          md: 'repeat(4, 1fr)' 
+        }, 
+        gap: { xs: 1.5, sm: 2, md: 3 }, 
+        mb: { xs: 2, sm: 3, md: 4 } 
       }}>
         <Card sx={{ 
-          height: 165,
+          height: { xs: 120, sm: 140, md: 165 },
           backgroundColor: 'white',
           borderRadius: 3,
-          position: 'relative'
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+          }
         }}>
-          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+          <CardContent sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            p: { xs: 1.5, sm: 2 },
+            '&:last-child': { pb: { xs: 1.5, sm: 2 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 1 
+              }}
+            >
               Completion Rate
             </Typography>
             <Box sx={{ 
@@ -316,25 +304,50 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               {analyticsLoading ? (
                 <CircularProgress size={40} />
               ) : (
-                <>
-                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData && analyticsData.completionRate > 0 ? `${analyticsData.completionRate}%` : '0%'}
-                  </Typography>
-                </>
+                <Typography 
+                  variant="h3" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#424242', 
+                    mb: 0.5,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}
+                >
+                  {analyticsData && analyticsData.completionRate > 0 ? `${analyticsData.completionRate}%` : '0%'}
+                </Typography>
               )}
             </Box>
           </CardContent>
         </Card>
 
         <Card sx={{ 
-          height: 165,
+          height: { xs: 120, sm: 140, md: 165 },
           backgroundColor: 'white',
           borderRadius: 3,
-          position: 'relative'
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+          }
         }}>
-          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
-              Peak Hour Activity
+          <CardContent sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            p: { xs: 1.5, sm: 2 },
+            '&:last-child': { pb: { xs: 1.5, sm: 2 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 1 
+              }}
+            >
+              Peak Hour
             </Typography>
             <Box sx={{ 
               flex: 1, 
@@ -346,24 +359,49 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               {analyticsLoading ? (
                 <CircularProgress size={40} />
               ) : (
-                <>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData && analyticsData.peakHourActivity.peakHour ? analyticsData.peakHourActivity.peakHour : 'N/A'}
-                  </Typography>
-                </>
+                <Typography 
+                  variant="h4" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#424242', 
+                    mb: 0.5,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' }
+                  }}
+                >
+                  {analyticsData && analyticsData.peakHourActivity.peakHour ? analyticsData.peakHourActivity.peakHour : 'N/A'}
+                </Typography>
               )}
             </Box>
           </CardContent>
         </Card>
 
         <Card sx={{ 
-          height: 165,
+          height: { xs: 120, sm: 140, md: 165 },
           backgroundColor: 'white',
           borderRadius: 3,
-          position: 'relative'
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+          }
         }}>
-          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+          <CardContent sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            p: { xs: 1.5, sm: 2 },
+            '&:last-child': { pb: { xs: 1.5, sm: 2 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 1 
+              }}
+            >
               Avg Duration
             </Typography>
             <Box sx={{ 
@@ -376,24 +414,49 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               {analyticsLoading ? (
                 <CircularProgress size={40} />
               ) : (
-                <>
-                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData && analyticsData.avgDurationMinutes > 0 ? `${analyticsData.avgDurationMinutes}m` : '0m'}
-                  </Typography>
-                </>
+                <Typography 
+                  variant="h3" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#424242', 
+                    mb: 0.5,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}
+                >
+                  {analyticsData && analyticsData.avgDurationMinutes > 0 ? `${analyticsData.avgDurationMinutes}m` : '0m'}
+                </Typography>
               )}
             </Box>
           </CardContent>
         </Card>
 
         <Card sx={{ 
-          height: 165,
+          height: { xs: 120, sm: 140, md: 165 },
           backgroundColor: 'white',
           borderRadius: 3,
-          position: 'relative'
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+          }
         }}>
-          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, ml: 1 }}>
+          <CardContent sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            p: { xs: 1.5, sm: 2 },
+            '&:last-child': { pb: { xs: 1.5, sm: 2 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 1 
+              }}
+            >
               Avg Distance
             </Typography>
             <Box sx={{ 
@@ -406,11 +469,18 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               {analyticsLoading ? (
                 <CircularProgress size={40} />
               ) : (
-                <>
-                  <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: '#424242', mb: 0.5 }}>
-                    {analyticsData && analyticsData.avgDistanceKm > 0 ? `${analyticsData.avgDistanceKm}km` : '0km'}
-                  </Typography>
-                </>
+                <Typography 
+                  variant="h3" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#424242', 
+                    mb: 0.5,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                  }}
+                >
+                  {analyticsData && analyticsData.avgDistanceKm > 0 ? `${analyticsData.avgDistanceKm}km` : '0km'}
+                </Typography>
               )}
             </Box>
           </CardContent>
@@ -418,39 +488,52 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       </Box>
 
       {/* Peak Hour Periods */}
-      <Card sx={{ backgroundColor: 'white', mb: 3, borderRadius: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+      <Card sx={{ backgroundColor: 'white', mb: { xs: 2, sm: 3 }, borderRadius: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } } }}>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{ 
+              fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+              fontWeight: 500, 
+              mb: 2 
+            }}
+          >
             Peak Hour Periods
           </Typography>
           {analyticsLoading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+            <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
               <CircularProgress />
             </Box>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
               <AreaChart data={peakHourData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                 <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                                  <XAxis 
-                    dataKey="hour" 
-                    style={{ 
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      transition: 'none'
-                    }}
-                    interval={2}
-                    minTickGap={10}
-                  />
+                <XAxis 
+                  dataKey="hour" 
+                  style={{ 
+                    fontSize: isMobile ? '10px' : '12px',
+                    fontFamily: 'inherit'
+                  }}
+                  interval={2}
+                  minTickGap={10}
+                />
                 <YAxis 
                   style={{ 
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    transition: 'none'
+                    fontSize: isMobile ? '10px' : '12px',
+                    fontFamily: 'inherit'
                   }}
                   domain={[0, getNextLogicalCeiling(Math.max(...peakHourData.map(d => d.deliveries))) || 20]}
                 />
-                <RechartsTooltip />
-                                  <Area type="monotone" dataKey="deliveries" stroke={colorPalette.primary} fill={colorPalette.primary} fillOpacity={0.6} name="Deliveries" />
+                <RechartsTooltip 
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? '12px' : '14px'
+                  }}
+                />
+                <Area type="monotone" dataKey="deliveries" stroke={colorPalette.primary} fill={colorPalette.primary} fillOpacity={0.6} name="Deliveries" />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -461,40 +544,53 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       <Box sx={{ 
         display: 'grid', 
         gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, 
-        gap: 3, 
-        mb: 4 
+        gap: { xs: 1.5, sm: 2, md: 3 }, 
+        mb: { xs: 2, sm: 3, md: 4 } 
       }}>
         {/* Duration Distribution */}
         <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } } }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 2 
+              }}
+            >
               Duration Distribution
             </Typography>
             {analyticsLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+              <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
                 <CircularProgress />
               </Box>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                 <BarChart data={analyticsData ? analyticsData.durationDistribution : []} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                   <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
                   <XAxis 
                     dataKey="duration" 
                     style={{ 
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      transition: 'none'
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontFamily: 'inherit'
                     }}
                   />
                   <YAxis 
                     style={{ 
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      transition: 'none'
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontFamily: 'inherit'
                     }}
                     domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.durationDistribution.map(d => d.count) : [0]))) || 20]}
                   />
-                  <RechartsTooltip />
+                  <RechartsTooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: isMobile ? '12px' : '14px'
+                    }}
+                  />
                   <Bar dataKey="count" fill={colorPalette.primaryVeryDark} name="Sessions" />
                 </BarChart>
               </ResponsiveContainer>
@@ -502,31 +598,26 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           </CardContent>
         </Card>
 
-        {/* Average Completion Time by Hour */}
+        {/* Average Completion Time by Period */}
         <Card sx={{ backgroundColor: 'white', borderRadius: 3 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } } }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 2 
+              }}
+            >
               Average Completion Time by {timePeriod === 'day' ? 'Hour' : timePeriod === 'week' ? 'Day' : timePeriod === 'month' ? 'Day of Month' : 'Month'}
             </Typography>
-            <Box sx={{ 
-              '& .recharts-cartesian-axis-tick': { 
-                transition: 'none !important',
-                animation: 'none !important'
-              },
-              '& .recharts-cartesian-axis': {
-                transition: 'none !important'
-              },
-              '& .recharts-text': {
-                transition: 'none !important',
-                animation: 'none !important'
-              }
-            }}>
-              {analyticsLoading ? (
-                <Box display="flex" justifyContent="center" alignItems="center" height={300}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                              <ResponsiveContainer width="100%" height={300}>
+            {analyticsLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                 <BarChart 
                   data={analyticsData ? analyticsData.completionTimeByPeriod : []} 
                   margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
@@ -535,78 +626,91 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                   <XAxis 
                     dataKey="timeUnit" 
                     style={{ 
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      transition: 'none'
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontFamily: 'inherit'
                     }}
-                    tick={{ fontSize: 12 }}
                     interval={timePeriod === 'day' ? 2 : timePeriod === 'month' ? 2 : 0}
                     minTickGap={10}
                   />
                   <YAxis 
                     style={{ 
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      transition: 'none'
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontFamily: 'inherit'
                     }}
                     domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.completionTimeByPeriod.map((d: any) => d.avgTime) : [0]))) || 20]}
                   />
-                  <RechartsTooltip />
-                  <Bar 
-                    dataKey="avgTime" 
-                    fill={colorPalette.tertiary}
-                    style={{ transition: 'none' }}
+                  <RechartsTooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      fontSize: isMobile ? '12px' : '14px'
+                    }}
                   />
+                  <Bar dataKey="avgTime" fill={colorPalette.tertiary} />
                 </BarChart>
               </ResponsiveContainer>
-              )}
-            </Box>
+            )}
           </CardContent>
         </Card>
       </Box>
 
       {/* Top Performers */}
-      <Card sx={{ backgroundColor: 'white', mb: 4, borderRadius: 3 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+      <Card sx={{ backgroundColor: 'white', mb: { xs: 2, sm: 3, md: 4 }, borderRadius: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } } }}>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{ 
+              fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+              fontWeight: 500, 
+              mb: 2 
+            }}
+          >
             Top Performers
           </Typography>
           <List>
             {analyticsData && analyticsData.topPerformers && analyticsData.topPerformers.length > 0 ? (
               analyticsData.topPerformers.map((performer, index) => (
                 <React.Fragment key={performer.vehicleId}>
-                  <ListItem alignItems="flex-start">
+                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
                     <ListItemAvatar>
                       <Avatar sx={{ 
                         bgcolor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#2196f3',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        width: { xs: 32, sm: 40 },
+                        height: { xs: 32, sm: 40 }
                       }}>
-                        {index === 0 ? <EmojiEvents sx={{ color: 'white', fontSize: 20 }} /> : index === 1 ? <WorkspacePremium sx={{ color: 'white', fontSize: 20 }} /> : index === 2 ? <MilitaryTech sx={{ color: 'white', fontSize: 20 }} /> : index + 1}
+                        {index === 0 ? <EmojiEvents sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} /> : 
+                         index === 1 ? <WorkspacePremium sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} /> : 
+                         index === 2 ? <MilitaryTech sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} /> : 
+                         index + 1}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
                       primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1" fontWeight="bold">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                             Vehicle ({performer.vehicleId})
                           </Typography>
-                          {index === 0 && <Star sx={{ color: '#ffd700', fontSize: 20 }} />}
+                          {index === 0 && <Star sx={{ color: '#ffd700', fontSize: { xs: 16, sm: 20 } }} />}
                         </Box>
                       }
                       secondary={
                         <Box>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                             {performer.trips} trips • {performer.totalKm.toFixed(1)} km total
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                             <Chip 
                               label={`${(performer.completion * 100).toFixed(0)}% completion`} 
                               size="small" 
                               sx={{ 
                                 borderColor: colorPalette.primary,
-                                color: colorPalette.primary
+                                color: colorPalette.primary,
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' }
                               }}
                               variant="outlined"
                             />
@@ -615,7 +719,8 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                               size="small" 
                               sx={{ 
                                 borderColor: colorPalette.primary,
-                                color: colorPalette.primary
+                                color: colorPalette.primary,
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' }
                               }}
                               variant="outlined"
                             />
@@ -627,7 +732,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="Champion" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#fff3cd',
                                     color: '#856404'
                                   }}
@@ -636,7 +741,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="MVP" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#e8f5e8',
                                     color: '#2e7d32'
                                   }}
@@ -649,7 +754,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="Runner Up" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#e3f2fd',
                                     color: '#1976d2'
                                   }}
@@ -658,7 +763,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="Consistent" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#f3e5f5',
                                     color: '#7b1fa2'
                                   }}
@@ -671,7 +776,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="Bronze" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#fff3e0',
                                     color: '#f57c00'
                                   }}
@@ -680,7 +785,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                                   label="Reliable" 
                                   size="small" 
                                   sx={{ 
-                                    fontSize: '0.7rem',
+                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
                                     backgroundColor: '#e0f2f1',
                                     color: '#00695c'
                                   }}
@@ -705,33 +810,50 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       </Card>
 
       {/* Fleet Status */}
-      <Card sx={{ backgroundColor: 'white', mb: 4, borderRadius: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, mb: 2, ml: 1 }}>
+      <Card sx={{ 
+        backgroundColor: 'white', 
+        mb: { xs: 2, sm: 3, md: 4 }, 
+        borderRadius: 3,
+        transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+        }
+      }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } } }}>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{ 
+              fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+              fontWeight: 500, 
+              mb: 2 
+            }}
+          >
             Fleet Status
           </Typography>
-          <Box display="flex" justifyContent="space-evenly" alignItems="center" mt={2} gap={6}>
+          <Box display="flex" justifyContent="space-evenly" alignItems="center" mt={2} gap={{ xs: 2, sm: 4, md: 6 }}>
             <Box textAlign="center">
-                              <Typography variant="h5" fontWeight="bold" color={colorPalette.primaryVeryDark}>
-                  {analyticsData && analyticsData.fleetStatus.activeVehicles > 0 ? analyticsData.fleetStatus.activeVehicles : 0}
-                </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.primaryVeryDark} sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
+                {analyticsData && analyticsData.fleetStatus.activeVehicles > 0 ? analyticsData.fleetStatus.activeVehicles : 0}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                 Active
               </Typography>
             </Box>
             <Box textAlign="center">
-              <Typography variant="h5" fontWeight="bold" color={colorPalette.secondary}>
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.secondary} sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
                 {analyticsData && analyticsData.fleetStatus.availableVehicles > 0 ? analyticsData.fleetStatus.availableVehicles : 0}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                 Available
               </Typography>
             </Box>
             <Box textAlign="center">
-              <Typography variant="h5" fontWeight="bold" color={colorPalette.accent}>
+              <Typography variant="h5" fontWeight="bold" color={colorPalette.accent} sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
                 {analyticsData && analyticsData.fleetStatus.maintenanceVehicles > 0 ? analyticsData.fleetStatus.maintenanceVehicles : 0}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                 Maintenance
               </Typography>
             </Box>

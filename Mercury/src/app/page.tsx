@@ -8,7 +8,12 @@ import {
   IconButton,
   Typography,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
+import {
+  KeyboardDoubleArrowLeft,
+  KeyboardDoubleArrowRight,
+} from '@mui/icons-material';
 
 import { ApiService } from '@/utils/api';
 import Sidebar from '@/components/Sidebar';
@@ -51,6 +56,7 @@ interface Stats {
 
 export default function Dashboard() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessions, setActiveSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -71,6 +77,14 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState('overview');
   const [healthStatus, setHealthStatus] = useState<'connected' | 'disconnected'>('connected');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(isMobile);
+
+  // Auto-collapse on mobile - always force collapse on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarCollapsed(true);
+    }
+  }, [isMobile]);
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -184,6 +198,10 @@ export default function Dashboard() {
     setSelectedTab(tab);
   };
 
+  const handleSidebarToggle = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   const renderContent = () => {
     switch (selectedTab) {
       case 'overview':
@@ -232,23 +250,71 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      height: '100vh', 
+      backgroundColor: '#f5f5f5',
+      overflow: 'hidden'
+    }}>
       <Sidebar
         selectedTab={selectedTab}
         onTabChange={handleTabChange}
+        isCollapsed={isSidebarCollapsed}
       />
       
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        minWidth: 0, // Prevents flex item from overflowing
+        height: '100vh'
+      }}>
         <AppBar 
           position="static" 
           elevation={0}
           sx={{ 
             backgroundColor: 'white',
             borderBottom: `1px solid ${theme.palette.divider}`,
-            zIndex: (theme) => theme.zIndex.drawer + 1 
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+            flexShrink: 0
           }}
         >
           <Toolbar sx={{ minHeight: '64px', px: 3 }}>
+            {/* Sidebar toggle button - only show on desktop */}
+            {!isMobile && (
+              <IconButton
+                onClick={handleSidebarToggle}
+                disableRipple
+                sx={{
+                  color: '#666',
+                  backgroundColor: 'transparent !important',
+                  '&:hover': {
+                    color: '#333',
+                    backgroundColor: 'transparent !important',
+                    '& .MuiSvgIcon-root': {
+                      transform: 'scale(1.2)',
+                    },
+                  },
+                  '&:focus': {
+                    backgroundColor: 'transparent !important',
+                  },
+                  '&:active': {
+                    backgroundColor: 'transparent !important',
+                  },
+                  '&.Mui-focusVisible': {
+                    backgroundColor: 'transparent !important',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {isSidebarCollapsed ? (
+                  <KeyboardDoubleArrowRight sx={{ fontSize: 20, transition: 'transform 0.2s ease-in-out' }} />
+                ) : (
+                  <KeyboardDoubleArrowLeft sx={{ fontSize: 20, transition: 'transform 0.2s ease-in-out' }} />
+                )}
+              </IconButton>
+            )}
+            
             <Box sx={{ flexGrow: 1 }} />
             
             <Box
@@ -286,7 +352,12 @@ export default function Dashboard() {
           </Toolbar>
         </AppBar>
 
-        <Box sx={{ flexGrow: 1, overflow: 'auto', backgroundColor: '#f5f5f5' }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          overflow: 'hidden', 
+          backgroundColor: '#f5f5f5',
+          minHeight: 0 // Allows flex item to shrink below content size
+        }}>
           {renderContent()}
         </Box>
       </Box>

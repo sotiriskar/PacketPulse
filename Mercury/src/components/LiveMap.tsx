@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -16,31 +16,52 @@ import {
   InputAdornment,
   CircularProgress,
   Autocomplete,
+  useTheme,
+  useMediaQuery,
+  IconButton,
+  Tooltip,
+  Divider,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
+  Fab,
+  SwipeableDrawer,
 } from '@mui/material';
 import {
   DirectionsCar,
   Schedule,
   Route,
-  Search
+  Search,
+  Close,
+  LocationOn,
+  LocalShipping,
+  ShoppingCart,
+  List as ListIcon,
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 
 // Color palette based on #fe4e50
 const colorPalette = {
-  primary: '#fe4e50', // Main brand color
-  primaryLight: '#ff6b6d', // Lighter shade
-  primaryDark: '#d13a3c', // Darker shade
-  primaryVeryDark: '#a82d2f', // Very dark for Active status
-  secondary: '#ff8a80', // Complementary light
-  tertiary: '#ffb3a7', // Very light shade
-  accent: '#ff6b6d', // Medium light
-  muted: '#ffcdd2', // Very light for backgrounds
+  primary: '#fe4e50',
+  primaryLight: '#ff6b6d',
+  primaryDark: '#d13a3c',
+  primaryVeryDark: '#a82d2f',
+  secondary: '#ff8a80',
+  tertiary: '#ffb3a7',
+  accent: '#ff6b6d',
+  muted: '#ffcdd2',
 };
 
 // Create a client-only map component
 const MapComponent = dynamic(() => import('./MapComponent').then(mod => ({ default: mod.default })), {
   ssr: false,
-  loading: () => <div>Loading map...</div>
+  loading: () => (
+    <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+      <CircularProgress />
+    </Box>
+  )
 });
 
 interface Session {
@@ -49,7 +70,6 @@ interface Session {
   order_id: string;
   status: string;
   latest_activity: string;
-  // Optional fields for backward compatibility
   order_status?: string;
   start_time?: string;
   last_update_time?: string;
@@ -57,13 +77,10 @@ interface Session {
   elapsed_time?: string;
   avg_speed_kmh?: number;
   eta?: string;
-  // Current vehicle coordinates
   current_latitude?: number;
   current_longitude?: number;
-  // Start coordinates (pickup)
   start_latitude?: number;
   start_longitude?: number;
-  // End coordinates (delivery)
   end_latitude?: number;
   end_longitude?: number;
 }
@@ -75,131 +92,114 @@ interface LiveMapProps {
   onSessionClick: (session: Session) => void;
 }
 
-
+interface CoordinateInfo {
+  type: 'pickup' | 'delivery' | 'vehicle';
+  session: Session;
+  latitude: number;
+  longitude: number;
+}
 
 export default function LiveMap({ sessions, loading, error, onSessionClick }: LiveMapProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredSessions, setFilteredSessions] = useState<Session[]>([]);
-  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [selectedFilterSession, setSelectedFilterSession] = useState<Session | null>(null);
   const [coordinateDialogOpen, setCoordinateDialogOpen] = useState(false);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<{
-    type: 'pickup' | 'delivery' | 'vehicle';
-    session: Session;
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<CoordinateInfo | null>(null);
+  const [mobileSessionDrawerOpen, setMobileSessionDrawerOpen] = useState(false);
 
-  // Use real data from props
-  const displaySessions = sessions;
-  
-
-
-  // Auto-select the latest session only on initial load
-  useEffect(() => {
-    if (displaySessions.length > 0 && !selectedFilterSession) {
-      const latestSession = displaySessions[0]; // Assuming sessions are ordered by latest_activity DESC
-      setSelectedFilterSession(latestSession);
-    }
-  }, [displaySessions, selectedFilterSession]);
-
-  // Filter sessions based on search term and selected filter
-  useEffect(() => {
-    let filtered = displaySessions;
+  // Memoized filtered sessions
+  const filteredSessions = useMemo(() => {
+    let filtered = sessions;
     
-    // First filter by search term
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(session =>
-        (session.vehicle_id?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (session.session_id?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (session.order_id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        session.vehicle_id?.toLowerCase().includes(term) ||
+        session.session_id?.toLowerCase().includes(term) ||
+        session.order_id?.toLowerCase().includes(term)
       );
     }
     
-    // Then filter by selected session if any
     if (selectedFilterSession) {
       filtered = filtered.filter(session => 
         session.session_id === selectedFilterSession.session_id
       );
     }
     
-    setFilteredSessions(filtered);
-  }, [displaySessions, searchTerm, selectedFilterSession]);
+    return filtered;
+  }, [sessions, searchTerm, selectedFilterSession]);
 
-  const handleSessionClick = (session: Session) => {
+  // Auto-select the latest session only on initial load
+  useEffect(() => {
+    if (sessions.length > 0 && !selectedFilterSession) {
+      setSelectedFilterSession(sessions[0]);
+    }
+  }, [sessions, selectedFilterSession]);
+
+  const handleSessionClick = useCallback((session: Session) => {
     setSelectedSession(session);
-    setSessionDialogOpen(true);
-  };
+    if (isMobile) {
+      setMobileSessionDrawerOpen(false);
+    }
+  }, [isMobile]);
 
-  const handlePickupClick = (session: Session) => {
-    console.log('Pickup clicked:', session);
-    console.log('Start coordinates:', session.start_latitude, session.start_longitude);
-    
-    if (!session.start_latitude || !session.start_longitude) {
-      console.warn('No pickup coordinates available for session:', session.session_id);
+  const handleCoordinateClick = useCallback((type: 'pickup' | 'delivery' | 'vehicle', session: Session) => {
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+
+    switch (type) {
+      case 'pickup':
+        latitude = session.start_latitude;
+        longitude = session.start_longitude;
+        break;
+      case 'delivery':
+        latitude = session.end_latitude;
+        longitude = session.end_longitude;
+        break;
+      case 'vehicle':
+        latitude = session.current_latitude;
+        longitude = session.current_longitude;
+        break;
+    }
+
+    if (!latitude || !longitude) {
+      console.warn(`No ${type} coordinates available for session:`, session.session_id);
       return;
     }
-    
-    setSelectedCoordinates({
-      type: 'pickup',
-      session,
-      latitude: session.start_latitude,
-      longitude: session.start_longitude
-    });
-    setCoordinateDialogOpen(true);
-  };
 
-  const handleDeliveryClick = (session: Session) => {
-    console.log('Delivery clicked:', session);
-    console.log('End coordinates:', session.end_latitude, session.end_longitude);
-    
-    if (!session.end_latitude || !session.end_longitude) {
-      console.warn('No delivery coordinates available for session:', session.session_id);
-      return;
-    }
-    
-    setSelectedCoordinates({
-      type: 'delivery',
-      session,
-      latitude: session.end_latitude,
-      longitude: session.end_longitude
-    });
+    setSelectedCoordinates({ type, session, latitude, longitude });
     setCoordinateDialogOpen(true);
-  };
+  }, []);
 
-  const handleVehicleClick = (session: Session) => {
-    console.log('Vehicle clicked:', session);
-    console.log('Current coordinates:', session.current_latitude, session.current_longitude);
-    
-    if (!session.current_latitude || !session.current_longitude) {
-      console.warn('No current coordinates available for session:', session.session_id);
-      return;
-    }
-    
-    setSelectedCoordinates({
-      type: 'vehicle',
-      session,
-      latitude: session.current_latitude,
-      longitude: session.current_longitude
-    });
-    setCoordinateDialogOpen(true);
-  };
+  const handlePickupClick = useCallback((session: Session) => {
+    handleCoordinateClick('pickup', session);
+  }, [handleCoordinateClick]);
 
-  const getStatusColor = (status: string) => {
+  const handleDeliveryClick = useCallback((session: Session) => {
+    handleCoordinateClick('delivery', session);
+  }, [handleCoordinateClick]);
+
+  const handleVehicleClick = useCallback((session: Session) => {
+    handleCoordinateClick('vehicle', session);
+  }, [handleCoordinateClick]);
+
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'started':
-        return 'primary';
+        return colorPalette.primaryLight;
       case 'en_route':
-        return 'warning';
+        return colorPalette.primary;
       case 'completed':
-        return 'success';
+        return colorPalette.primaryDark;
       default:
-        return 'default';
+        return colorPalette.muted;
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'started':
         return <DirectionsCar />;
@@ -210,7 +210,20 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
       default:
         return <DirectionsCar />;
     }
-  };
+  }, []);
+
+  const getLocationIcon = useCallback((type: string) => {
+    switch (type) {
+      case 'pickup':
+        return <LocalShipping />;
+      case 'delivery':
+        return <ShoppingCart />;
+      case 'vehicle':
+        return <LocationOn />;
+      default:
+        return <LocationOn />;
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -220,22 +233,64 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
     );
   }
 
+  if (error) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 400px' }, gap: 3 }}>
+    <Box sx={{ 
+      p: { xs: 2, sm: 3 }, 
+      backgroundColor: '#f5f5f5', 
+      height: '100%',
+      maxWidth: '100%',
+      overflow: 'auto'
+    }}>
+      {/* Main Content Area */}
+      <Box sx={{ 
+        display: 'flex',
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: { xs: 2, sm: 3 },
+        mb: { xs: 2, sm: 3 }
+      }}>
         {/* Map Section */}
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
+        <Card sx={{ 
+          backgroundColor: 'white',
+          borderRadius: 3,
+          flex: { lg: 1 },
+          minHeight: { xs: '400px', sm: '500px', lg: '600px' },
+          height: { xs: '400px', sm: '500px', lg: 'auto' }
+        }}>
+          <CardContent sx={{ 
+            height: '100%',
+            display: 'flex', 
+            flexDirection: 'column',
+            p: { xs: 2, sm: 3, md: 4 },
+            '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 2 
+              }}
+            >
               Live Session Tracking
             </Typography>
             <Box
               sx={{
-                height: 600,
+                flex: 1,
                 borderRadius: 2,
                 position: 'relative',
                 overflow: 'hidden',
                 border: '1px solid #e0e0e0',
+                minHeight: 0,
+                height: { xs: '300px', sm: '400px', lg: '100%' }
               }}
             >
               <MapComponent
@@ -250,13 +305,14 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               <Box
                 sx={{
                   position: 'absolute',
-                  bottom: 16,
-                  right: 16,
+                  bottom: 25,
+                  right: 14,
                   backgroundColor: 'white',
                   borderRadius: 1,
                   p: 1,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                   zIndex: 1000,
+                  display: { xs: 'none', sm: 'block' },
                 }}
               >
                 <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
@@ -312,19 +368,40 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
           </CardContent>
         </Card>
 
-        {/* Vehicle List */}
-        <Card sx={{ backgroundColor: 'white' }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
+        {/* Vehicle List - Sidebar on desktop, bottom panel on mobile */}
+        <Card sx={{ 
+          backgroundColor: 'white',
+          borderRadius: 3,
+          width: { xs: '100%', lg: '400px' },
+          flexShrink: 0,
+          minHeight: { xs: '300px', sm: '400px', lg: '600px' }
+        }}>
+          <CardContent sx={{ 
+            height: '100%',
+            display: 'flex', 
+            flexDirection: 'column',
+            p: { xs: 2, sm: 3, md: 4 },
+            '&:last-child': { pb: { xs: 2, sm: 3, md: 4 } }
+          }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                fontWeight: 500, 
+                mb: 2 
+              }}
+            >
               {selectedFilterSession ? 'Selected Session' : 'Active Sessions'}
             </Typography>
+            
             <Box sx={{ mb: 2 }}>
               <Autocomplete
                 fullWidth
                 size="small"
-                options={displaySessions}
+                options={sessions}
                 getOptionLabel={(option) => 
-                  `${option.session_id} - ${option.vehicle_id} - ${option.order_id}`
+                  `${option.session_id} - ${option.vehicle_id}`
                 }
                 value={selectedFilterSession}
                 onChange={(event, newValue) => {
@@ -344,11 +421,12 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     {...params}
                     placeholder="Search sessions..."
                     variant="outlined"
+                    size="small"
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Search />
+                          <Search sx={{ fontSize: '1rem' }} />
                         </InputAdornment>
                       ),
                     }}
@@ -357,10 +435,10 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 renderOption={(props, option) => (
                   <Box component="li" {...props} key={option.session_id}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
                         {option.session_id}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                         Vehicle: {option.vehicle_id} | Order: {option.order_id}
                       </Typography>
                     </Box>
@@ -372,60 +450,264 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               />
             </Box>
             
-            <Box sx={{ maxHeight: 500, overflow: 'auto' }}>
-              {filteredSessions.map((session, index) => {
-                // Ensure we have a valid key
-                const key = session.session_id || `session-${index}`;
-                return (
-                  <Card
-                    key={key}
-                    sx={{
-                      mb: 1,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                    }}
-                    onClick={() => setSelectedSession(session)}
-                  >
-                  <CardContent sx={{ py: 1.5 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="subtitle2">
-                          {session.vehicle_id}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {session.session_id}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
+            <Box sx={{ 
+              flex: 1,
+              overflow: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '4px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: '#f1f1f1',
+                borderRadius: '2px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#c1c1c1',
+                borderRadius: '2px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                backgroundColor: '#a8a8a8',
+              },
+            }}>
+              {filteredSessions.length === 0 ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  height: '100%',
+                  color: 'text.secondary',
+                  py: 4
+                }}>
+                  <Typography variant="body2">No sessions found</Typography>
+                </Box>
+              ) : (
+                <Box>
+                  {filteredSessions.map((session, index) => {
+                    const key = session.session_id || `session-${index}`;
+                    return (
+                      <Card
+                        key={key}
                         sx={{
-                          backgroundColor: session.order_status === 'en_route' ? colorPalette.primary : colorPalette.primaryLight,
-                          color: 'white',
+                          mb: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
                           '&:hover': {
-                            backgroundColor: session.order_status === 'en_route' ? colorPalette.primaryDark : colorPalette.primary,
+                            backgroundColor: '#f5f5f5',
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          },
+                          '&:last-child': {
+                            mb: 0
                           }
                         }}
-                        size="small"
-                      />
-                    </Box>
-                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ETA: {session.eta || 'N/A'}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                        onClick={() => handleSessionClick(session)}
+                      >
+                        <CardContent sx={{ 
+                          py: 1.5, 
+                          px: 2,
+                          '&:last-child': { pb: 1.5 }
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography variant="subtitle2" sx={{ 
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                fontSize: '0.875rem'
+                              }}>
+                                {session.vehicle_id}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'block',
+                                fontSize: '0.75rem'
+                              }}>
+                                {session.session_id}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
+                              sx={{
+                                backgroundColor: getStatusColor(session.order_status || 'started'),
+                                color: 'white',
+                                fontWeight: 500,
+                                fontSize: '0.75rem',
+                                height: 24,
+                                '& .MuiChip-label': {
+                                  px: 1,
+                                }
+                              }}
+                              size="small"
+                            />
+                          </Box>
+                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              ETA: {session.eta || 'N/A'}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Box>
+              )}
             </Box>
           </CardContent>
         </Card>
       </Box>
+
+      {/* Mobile Session List FAB - Only show on mobile */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          aria-label="show sessions"
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            backgroundColor: colorPalette.primary,
+            '&:hover': {
+              backgroundColor: colorPalette.primaryDark,
+            },
+            zIndex: 1000,
+          }}
+          onClick={() => setMobileSessionDrawerOpen(true)}
+        >
+          <ListIcon />
+        </Fab>
+      )}
+
+      {/* Mobile Session Drawer */}
+      {isMobile && (
+        <SwipeableDrawer
+          anchor="bottom"
+          open={mobileSessionDrawerOpen}
+          onClose={() => setMobileSessionDrawerOpen(false)}
+          onOpen={() => setMobileSessionDrawerOpen(true)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: '80vh',
+            },
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              mb: 2 
+            }}>
+              <Typography variant="h6">
+                Active Sessions ({filteredSessions.length})
+              </Typography>
+              <IconButton
+                onClick={() => setMobileSessionDrawerOpen(false)}
+                size="small"
+              >
+                <Close />
+              </IconButton>
+            </Box>
+            
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search sessions..."
+                variant="outlined"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+            
+            <Box sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+              {filteredSessions.length === 0 ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  py: 4,
+                  color: 'text.secondary'
+                }}>
+                  <Typography variant="body2">No sessions found</Typography>
+                </Box>
+              ) : (
+                <List>
+                  {filteredSessions.map((session, index) => {
+                    const key = session.session_id || `session-${index}`;
+                    return (
+                      <ListItem key={key} disablePadding sx={{ mb: 1 }}>
+                        <ListItemButton
+                          onClick={() => handleSessionClick(session)}
+                          sx={{
+                            borderRadius: 1,
+                            border: '1px solid #e0e0e0',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5',
+                            },
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                  {session.vehicle_id}
+                                </Typography>
+                                <Chip
+                                  label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
+                                  sx={{
+                                    backgroundColor: getStatusColor(session.order_status || 'started'),
+                                    color: 'white',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    height: 20,
+                                    '& .MuiChip-label': {
+                                      px: 0.5,
+                                    }
+                                  }}
+                                  size="small"
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                  {session.session_id}
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    ETA: {session.eta || 'N/A'}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            }
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              )}
+            </Box>
+          </Box>
+        </SwipeableDrawer>
+      )}
 
       {/* Session Details Dialog */}
       <Dialog
@@ -433,62 +715,105 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
         onClose={() => setSelectedSession(null)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh',
+          }
+        }}
       >
         {selectedSession && (
           <>
-            <DialogTitle>
-              Session Details - {selectedSession.session_id}
+            <DialogTitle sx={{ 
+              pb: 1,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Typography variant="h6">
+                Session Details - {selectedSession.session_id}
+              </Typography>
+              <IconButton
+                onClick={() => setSelectedSession(null)}
+                size="small"
+                sx={{ color: 'text.secondary' }}
+              >
+                <Close />
+              </IconButton>
             </DialogTitle>
-            <DialogContent>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1 }}>
+            <Divider />
+            <DialogContent sx={{ pt: 2 }}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
+                gap: 2 
+              }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Vehicle ID</Typography>
-                  <Typography variant="body1">{selectedSession.vehicle_id}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.vehicle_id}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Order ID</Typography>
-                  <Typography variant="body1">{selectedSession.order_id}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.order_id}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Status</Typography>
                   <Chip
                     label={selectedSession.order_status === 'en_route' ? 'En Route' : 'Started'}
+                    icon={getStatusIcon(selectedSession.order_status || 'started')}
                     sx={{
-                      backgroundColor: selectedSession.order_status === 'en_route' ? colorPalette.primary : colorPalette.primaryLight,
+                      backgroundColor: getStatusColor(selectedSession.order_status || 'started'),
                       color: 'white',
-                      '&:hover': {
-                        backgroundColor: selectedSession.order_status === 'en_route' ? colorPalette.primaryDark : colorPalette.primary,
-                      }
+                      fontWeight: 500,
+                      mt: 0.5
                     }}
                     size="small"
                   />
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Distance</Typography>
-                  <Typography variant="body1">{selectedSession.distance_to_destination_km ? `${selectedSession.distance_to_destination_km.toFixed(1)} km` : 'N/A'}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.distance_to_destination_km ? `${selectedSession.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Speed</Typography>
-                  <Typography variant="body1">{selectedSession.avg_speed_kmh ? `${selectedSession.avg_speed_kmh.toFixed(1)} km/h` : 'N/A'}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.avg_speed_kmh ? `${selectedSession.avg_speed_kmh.toFixed(1)} km/h` : 'N/A'}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">ETA</Typography>
-                  <Typography variant="body1">{selectedSession.eta || 'N/A'}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.eta || 'N/A'}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Start Time</Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
                     {selectedSession.start_time ? new Date(selectedSession.start_time).toLocaleTimeString() : 'N/A'}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Elapsed Time</Typography>
-                  <Typography variant="body1">{selectedSession.elapsed_time || 'N/A'}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedSession.elapsed_time || 'N/A'}
+                  </Typography>
                 </Box>
               </Box>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setSelectedSession(null)}>Close</Button>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button 
+                onClick={() => setSelectedSession(null)}
+                variant="outlined"
+                sx={{ borderRadius: 2 }}
+              >
+                Close
+              </Button>
             </DialogActions>
           </>
         )}
@@ -500,68 +825,120 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
         onClose={() => setCoordinateDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh',
+          }
+        }}
       >
         {selectedCoordinates && (
           <>
-            <DialogTitle>
-              {selectedCoordinates.type === 'pickup' ? 'Pickup' : selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'} Location - {selectedCoordinates.session.session_id}
+            <DialogTitle sx={{ 
+              pb: 1,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {getLocationIcon(selectedCoordinates.type)}
+                <Typography variant="h6">
+                  {selectedCoordinates.type === 'pickup' ? 'Pickup' : 
+                   selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'} Location
+                </Typography>
+              </Box>
+              <IconButton
+                onClick={() => setCoordinateDialogOpen(false)}
+                size="small"
+                sx={{ color: 'text.secondary' }}
+              >
+                <Close />
+              </IconButton>
             </DialogTitle>
-            <DialogContent>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1 }}>
+            <Divider />
+            <DialogContent sx={{ pt: 2 }}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
+                gap: 2 
+              }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Session ID</Typography>
-                  <Typography variant="body1">{selectedCoordinates.session.session_id}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedCoordinates.session.session_id}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Vehicle ID</Typography>
-                  <Typography variant="body1">{selectedCoordinates.session.vehicle_id}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedCoordinates.session.vehicle_id}
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Order ID</Typography>
-                  <Typography variant="body1">{selectedCoordinates.session.order_id}</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedCoordinates.session.order_id}
+                  </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box>
                   <Typography variant="caption" color="text.secondary">Location Type</Typography>
                   <Chip
-                    label={selectedCoordinates.type === 'pickup' ? 'Pickup' : selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'}
+                    label={selectedCoordinates.type === 'pickup' ? 'Pickup' : 
+                           selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'}
+                    icon={getLocationIcon(selectedCoordinates.type)}
                     sx={{
-                      backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.secondary : selectedCoordinates.type === 'delivery' ? colorPalette.primaryVeryDark : colorPalette.primary,
+                      backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.secondary : 
+                                       selectedCoordinates.type === 'delivery' ? colorPalette.primaryVeryDark : 
+                                       colorPalette.primary,
                       color: 'white',
-                      alignSelf: 'flex-start',
-                      '&:hover': {
-                        backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.tertiary : selectedCoordinates.type === 'delivery' ? colorPalette.primaryDark : colorPalette.primaryDark,
-                      }
+                      fontWeight: 500,
+                      mt: 0.5
                     }}
                     size="small"
                   />
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Latitude</Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'monospace',
+                    fontWeight: 500,
+                    backgroundColor: '#f5f5f5',
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontSize: '0.875rem'
+                  }}>
                     {selectedCoordinates.latitude.toFixed(6)}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Longitude</Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'monospace',
+                    fontWeight: 500,
+                    backgroundColor: '#f5f5f5',
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontSize: '0.875rem'
+                  }}>
                     {selectedCoordinates.longitude.toFixed(6)}
                   </Typography>
                 </Box>
               </Box>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setCoordinateDialogOpen(false)}>Close</Button>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button 
+                onClick={() => setCoordinateDialogOpen(false)}
+                variant="outlined"
+                sx={{ borderRadius: 2 }}
+              >
+                Close
+              </Button>
             </DialogActions>
           </>
         )}
       </Dialog>
-      
-      {/* Debug: Show dialog state */}
-      <Box sx={{ position: 'fixed', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.8)', color: 'white', p: 1, borderRadius: 1, fontSize: '12px', zIndex: 9999 }}>
-        Dialog Open: {coordinateDialogOpen ? 'Yes' : 'No'}
-        <br />
-        Selected: {selectedCoordinates ? `${selectedCoordinates.type} - ${selectedCoordinates.session.session_id}` : 'None'}
-      </Box>
     </Box>
   );
 } 
