@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
 
-export function middleware(request: NextRequest) {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+export async function middleware(request: NextRequest) {
   // Handle API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     // Add CORS headers for API routes
@@ -13,7 +16,41 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  // Check authentication for protected routes
+  const authToken = request.cookies.get('auth-token')?.value;
+
+  // Allow access to auth-related pages and API routes
+  if (
+    request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname.startsWith('/api/auth/') ||
+    request.nextUrl.pathname.startsWith('/_next/') ||
+    request.nextUrl.pathname.startsWith('/favicon') ||
+    request.nextUrl.pathname.startsWith('/images/')
+  ) {
+    return NextResponse.next();
+  }
+
+  // If no auth token, redirect to login
+  if (!authToken) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  try {
+    // Verify the JWT token
+    await jwtVerify(authToken, new TextEncoder().encode(JWT_SECRET));
+    return NextResponse.next();
+  } catch (error) {
+    // Invalid token, redirect to login
+    const response = NextResponse.redirect(new URL('/', request.url));
+    response.cookies.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0,
+    });
+    return response;
+  }
 }
 
 export const config = {

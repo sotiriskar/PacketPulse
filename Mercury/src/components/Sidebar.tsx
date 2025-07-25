@@ -21,7 +21,7 @@ import {
   Map,
   Analytics,
   Settings,
-  Notifications,
+  MeetingRoom,
 } from '@mui/icons-material';
 import Image from 'next/image';
 
@@ -29,6 +29,7 @@ interface SidebarProps {
   selectedTab: string;
   onTabChange: (tab: string) => void;
   isCollapsed: boolean;
+  onLogout: () => void;
 }
 
 const DRAWER_WIDTH = 280;
@@ -55,7 +56,7 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar({ selectedTab, onTabChange, isCollapsed }: SidebarProps) {
+export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogout }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -187,43 +188,66 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed }: Sideb
         <List>
           <ListItem disablePadding>
             <Tooltip 
-              title={isCollapsed ? "Notifications" : ''} 
-              placement="right"
-              disableHoverListener={!isCollapsed}
-            >
-              <ListItemButton sx={{
-                borderRadius: 2,
-                minHeight: 48,
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-              }}>
-                <ListItemIcon sx={{
-                  minWidth: isCollapsed ? 'auto' : 40,
-                  margin: 0,
-                }}>
-                  <Notifications />
-                </ListItemIcon>
-                {!isCollapsed && <ListItemText primary="Notifications" />}
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-          <ListItem disablePadding>
-            <Tooltip 
               title={isCollapsed ? "Settings" : ''} 
               placement="right"
               disableHoverListener={!isCollapsed}
             >
-              <ListItemButton sx={{
-                borderRadius: 2,
-                minHeight: 48,
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-              }}>
+              <ListItemButton 
+                onClick={() => onTabChange('settings')}
+                selected={selectedTab === 'settings'}
+                sx={{
+                  borderRadius: 2,
+                  minHeight: 48,
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  '&.Mui-selected': {
+                    backgroundColor: '#fe4e50',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: '#d13a3c',
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
                 <ListItemIcon sx={{
+                  color: selectedTab === 'settings' ? 'inherit' : theme.palette.text.secondary,
                   minWidth: isCollapsed ? 'auto' : 40,
                   margin: 0,
                 }}>
                   <Settings />
                 </ListItemIcon>
                 {!isCollapsed && <ListItemText primary="Settings" />}
+              </ListItemButton>
+            </Tooltip>
+          </ListItem>
+          <ListItem disablePadding>
+            <Tooltip 
+              title={isCollapsed ? "Logout" : ''} 
+              placement="right"
+              disableHoverListener={!isCollapsed}
+            >
+              <ListItemButton 
+                onClick={onLogout}
+                sx={{
+                  borderRadius: 2,
+                  minHeight: 48,
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  color: theme.palette.text.secondary,
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
+                <ListItemIcon sx={{
+                  minWidth: isCollapsed ? 'auto' : 40,
+                  margin: 0,
+                  color: 'inherit',
+                }}>
+                  <MeetingRoom />
+                </ListItemIcon>
+                {!isCollapsed && <ListItemText primary="Logout" />}
               </ListItemButton>
             </Tooltip>
           </ListItem>

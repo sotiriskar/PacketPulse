@@ -1,126 +1,136 @@
-# PacketPulse Dashboard
+# Mercury - PacketPulse Dashboard
 
-A comprehensive fleet management dashboard built with Next.js, Material-UI, and TypeScript.
+A modern, real-time vehicle data monitoring and analytics dashboard built with Next.js, Material-UI, and TypeScript.
 
 ## Features
 
-### 🏠 Overview Dashboard
-- **KPI Cards**: Real-time metrics including active sessions, total vehicles, distance covered, and average speed
-- **Interactive Charts**: Fleet distribution pie chart and speed distribution bar chart
-- **Recent Sessions Table**: Quick overview of active sessions with status indicators
-- **Quick Stats**: Sidebar with key performance indicators
+- **Real-time Dashboard**: Live monitoring of vehicle sessions and fleet status
+- **Interactive Maps**: Real-time vehicle tracking with Leaflet maps
+- **Advanced Analytics**: Comprehensive analytics with charts and KPIs
+- **Responsive Design**: Mobile-friendly interface with collapsible sidebar
+- **Authentication System**: Secure login/signup with JWT tokens
+- **Health Monitoring**: Real-time connection status indicators
 
-### 🗺️ Live Map
-- **Real-time Vehicle Tracking**: Interactive map showing vehicle locations
-- **Vehicle List**: Searchable list of all active vehicles with status indicators
-- **Session Details**: Click on any vehicle to view detailed session information
-- **Location Data**: Mock coordinates with detailed vehicle information
+## Authentication
 
-### 📊 Analytics
-- **Performance Metrics**: Fleet utilization, average speed, trip completion rates, and distance efficiency
-- **Trend Analysis**: Performance over time charts with speed and efficiency metrics
-- **Fleet Utilization**: Pie chart showing vehicle status distribution
-- **Speed Analysis**: Bar charts and area charts for speed and distance correlation
-- **Key Insights**: AI-powered recommendations and performance highlights
+The dashboard now includes a complete authentication system:
 
-### 🚛 Fleet Management
-- **Fleet Overview**: Total vehicles, active vehicles, maintenance status, and efficiency metrics
-- **Vehicle Details**: Comprehensive table with all vehicle information
-- **Add/Edit Vehicles**: Modal dialogs for fleet management operations
-- **Status Tracking**: Real-time status updates (active, maintenance, idle, offline)
-- **Performance Metrics**: Individual vehicle efficiency and speed tracking
+### Default Admin User
+- **Username**: admin
+- **Email**: admin@example.com
+- **Password**: password
 
-### 🔧 Additional Features
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Real-time Updates**: Auto-refresh every 10 seconds for live data
-- **Search & Filter**: Find specific vehicles or sessions quickly
-- **Status Indicators**: Color-coded chips for easy status identification
-- **Interactive Elements**: Hover effects, tooltips, and clickable components
+### Features
+- JWT-based authentication with HTTP-only cookies
+- Secure password hashing with bcrypt
+- Protected routes with middleware
+- User registration and login
+- Automatic session management
 
-## Navigation
-
-The dashboard features a comprehensive sidebar navigation with the following sections:
-
-1. **Overview** - Main dashboard with KPIs and charts
-2. **Live Map** - Real-time vehicle tracking and location data
-3. **Analytics** - Performance metrics and trend analysis
-4. **Fleet Management** - Vehicle fleet overview and management
-5. **Performance** - Detailed performance metrics (coming soon)
-6. **Route Planning** - Route optimization tools (coming soon)
-7. **Timeline** - Historical data view (coming soon)
-
-## Technology Stack
-
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **UI Framework**: Material-UI v7
-- **Charts**: Recharts
-- **Styling**: Emotion (CSS-in-JS)
-- **Icons**: Material-UI Icons
+### API Endpoints
+- `POST /api/auth/login` - User login
+- `POST /api/auth/signup` - User registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/verify` - Verify authentication token
 
 ## Getting Started
 
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Docker (for backend services)
+
+### Installation
+
 1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## API Endpoints
-
-The dashboard connects to the following API endpoints:
-
-- `/api/sessions` - Get all active sessions
-- `/api/sessions/[id]` - Get specific session details
-- `/api/stats` - Get dashboard statistics
-- `/api/health` - Health check endpoint
-
-## Data Structure
-
-### Session Interface
-```typescript
-interface Session {
-  session_id: string;
-  vehicle_id: string;
-  order_id: string;
-  order_status: string;
-  start_time: string;
-  last_update_time: string;
-  distance_to_destination_km: number;
-  elapsed_time: string;
-  avg_speed_kmh: number;
-  eta: string;
-}
+```bash
+npm install
 ```
 
-### Stats Interface
-```typescript
-interface Stats {
-  total_sessions: number;
-  active_sessions: number;
-  total_distance_km: number;
-  avg_speed_kmh: number;
-  total_vehicles: number;
-  vehicles_in_use: number;
-  total_completed_trips: number;
-}
+2. Set up environment variables:
+```bash
+# Create .env.local file
+JWT_SECRET=your-secret-key-change-in-production
 ```
 
-## Future Enhancements
+3. Start the development server:
+```bash
+npm run dev
+```
 
-- **Real Map Integration**: Integration with Google Maps or Mapbox
-- **WebSocket Support**: Real-time data streaming
-- **Advanced Analytics**: Machine learning insights and predictions
-- **Mobile App**: React Native companion app
-- **Notifications**: Real-time alerts and notifications
-- **Export Features**: PDF reports and data export
-- **User Management**: Role-based access control
-- **API Documentation**: Swagger/OpenAPI documentation
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+### Login
+- Navigate to the dashboard
+- Use the default admin credentials or create a new account
+- You'll be redirected to the dashboard upon successful authentication
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   │   └── auth/          # Authentication endpoints
+│   ├── auth/              # Authentication page
+│   ├── dashboard/         # Main dashboard page
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page (auth redirect)
+├── components/            # React components
+│   ├── Analytics.tsx      # Analytics dashboard
+│   ├── LiveMap.tsx        # Real-time map
+│   ├── Login.tsx          # Login form
+│   ├── Overview.tsx       # Dashboard overview
+│   ├── Sidebar.tsx        # Navigation sidebar
+│   └── Signup.tsx         # Signup form
+├── contexts/              # React contexts
+│   └── AuthContext.tsx    # Authentication context
+├── middleware.ts          # Next.js middleware
+└── utils/                 # Utility functions
+    ├── api.ts             # API service
+    └── useWebSocket.ts    # WebSocket hook
+```
+
+## Database
+
+The authentication system uses a users table created in the Uranus dbt project:
+
+```sql
+-- Users table structure
+CREATE TABLE users (
+    user_id UUID DEFAULT generateUUIDv4(),
+    username String,
+    email String,
+    password_hash String,
+    created_at DateTime DEFAULT now(),
+    updated_at DateTime DEFAULT now(),
+    is_active Boolean DEFAULT true
+) ENGINE = MergeTree()
+ORDER BY user_id;
+```
+
+## Security Features
+
+- **Password Hashing**: All passwords are hashed using bcrypt with cost factor 12
+- **JWT Tokens**: Secure token-based authentication
+- **HTTP-only Cookies**: Tokens stored in secure, HTTP-only cookies
+- **Protected Routes**: Middleware protection for all dashboard routes
+- **Input Validation**: Email and password validation on both client and server
+
+## Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+### Environment Variables
+
+- `JWT_SECRET` - Secret key for JWT token signing (required)
+- `NODE_ENV` - Environment (development/production)
 
 ## Contributing
 
