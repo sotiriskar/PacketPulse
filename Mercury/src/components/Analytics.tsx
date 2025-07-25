@@ -160,8 +160,8 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
     return Math.ceil(maxValue * 1.2);
   };
 
-  // Memoized peak hour data
-  const peakHourData = useMemo(() => {
+  // Memoized chart data to prevent unnecessary re-renders
+  const memoizedPeakHourData = useMemo(() => {
     return analyticsData ? analyticsData.peakHourData : [
       { hour: '00:00', deliveries: 2 },
       { hour: '02:00', deliveries: 1 },
@@ -176,7 +176,119 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       { hour: '20:00', deliveries: 9 },
       { hour: '22:00', deliveries: 4 },
     ];
-  }, [analyticsData]);
+  }, [JSON.stringify(analyticsData?.peakHourData)]);
+
+  const memoizedDurationData = useMemo(() => {
+    return analyticsData ? analyticsData.durationDistribution : [];
+  }, [JSON.stringify(analyticsData?.durationDistribution)]);
+
+  const memoizedCompletionTimeData = useMemo(() => {
+    return analyticsData ? analyticsData.completionTimeByPeriod : [];
+  }, [JSON.stringify(analyticsData?.completionTimeByPeriod)]);
+
+  // Memoized chart components to prevent re-renders
+  const peakHourChart = useMemo(() => (
+    <AreaChart 
+      key="peak-hour-chart"
+      data={memoizedPeakHourData} 
+      margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
+    >
+      <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+      <XAxis 
+        dataKey="hour" 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+        interval={2}
+        minTickGap={10}
+      />
+      <YAxis 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+        domain={[0, getNextLogicalCeiling(Math.max(...memoizedPeakHourData.map(d => d.deliveries))) || 20]}
+      />
+      <RechartsTooltip 
+        contentStyle={{
+          backgroundColor: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          fontSize: isMobile ? '12px' : '14px'
+        }}
+      />
+      <Area type="monotone" dataKey="deliveries" stroke={colorPalette.primary} fill={colorPalette.primary} fillOpacity={0.6} name="Deliveries" />
+    </AreaChart>
+  ), [memoizedPeakHourData, isMobile]);
+
+  const durationChart = useMemo(() => (
+    <BarChart 
+      key="duration-chart"
+      data={memoizedDurationData} 
+      margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
+    >
+      <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+      <XAxis 
+        dataKey="duration" 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+      />
+      <YAxis 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+        domain={[0, getNextLogicalCeiling(Math.max(...memoizedDurationData.map(d => d.count))) || 20]}
+      />
+      <RechartsTooltip 
+        contentStyle={{
+          backgroundColor: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          fontSize: isMobile ? '12px' : '14px'
+        }}
+      />
+      <Bar dataKey="count" fill={colorPalette.primaryVeryDark} name="Sessions" />
+    </BarChart>
+  ), [memoizedDurationData, isMobile]);
+
+  const completionTimeChart = useMemo(() => (
+    <BarChart 
+      key="completion-time-chart"
+      data={memoizedCompletionTimeData} 
+      margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
+    >
+      <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
+      <XAxis 
+        dataKey="timeUnit" 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+        interval={timePeriod === 'day' ? 2 : timePeriod === 'month' ? 2 : 0}
+        minTickGap={10}
+      />
+      <YAxis 
+        style={{ 
+          fontSize: isMobile ? '10px' : '12px',
+          fontFamily: 'inherit'
+        }}
+        domain={[0, getNextLogicalCeiling(Math.max(...memoizedCompletionTimeData.map((d: any) => d.avgTime))) || 20]}
+      />
+      <RechartsTooltip 
+        contentStyle={{
+          backgroundColor: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          fontSize: isMobile ? '12px' : '14px'
+        }}
+      />
+      <Bar dataKey="avgTime" fill={colorPalette.tertiary} />
+    </BarChart>
+  ), [memoizedCompletionTimeData, timePeriod, isMobile]);
 
   if (loading) {
     return (
@@ -507,34 +619,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
             </Box>
           ) : (
             <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-              <AreaChart data={peakHourData} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                <XAxis 
-                  dataKey="hour" 
-                  style={{ 
-                    fontSize: isMobile ? '10px' : '12px',
-                    fontFamily: 'inherit'
-                  }}
-                  interval={2}
-                  minTickGap={10}
-                />
-                <YAxis 
-                  style={{ 
-                    fontSize: isMobile ? '10px' : '12px',
-                    fontFamily: 'inherit'
-                  }}
-                  domain={[0, getNextLogicalCeiling(Math.max(...peakHourData.map(d => d.deliveries))) || 20]}
-                />
-                <RechartsTooltip 
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? '12px' : '14px'
-                  }}
-                />
-                <Area type="monotone" dataKey="deliveries" stroke={colorPalette.primary} fill={colorPalette.primary} fillOpacity={0.6} name="Deliveries" />
-              </AreaChart>
+              {peakHourChart}
             </ResponsiveContainer>
           )}
         </CardContent>
@@ -567,32 +652,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               </Box>
             ) : (
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                <BarChart data={analyticsData ? analyticsData.durationDistribution : []} margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                  <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                  <XAxis 
-                    dataKey="duration" 
-                    style={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                  <YAxis 
-                    style={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontFamily: 'inherit'
-                    }}
-                    domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.durationDistribution.map(d => d.count) : [0]))) || 20]}
-                  />
-                  <RechartsTooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: isMobile ? '12px' : '14px'
-                    }}
-                  />
-                  <Bar dataKey="count" fill={colorPalette.primaryVeryDark} name="Sessions" />
-                </BarChart>
+                {durationChart}
               </ResponsiveContainer>
             )}
           </CardContent>
@@ -618,37 +678,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
               </Box>
             ) : (
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                <BarChart 
-                  data={analyticsData ? analyticsData.completionTimeByPeriod : []} 
-                  margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
-                >
-                  <CartesianGrid horizontal={true} vertical={false} stroke="#e0e0e0" />
-                  <XAxis 
-                    dataKey="timeUnit" 
-                    style={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontFamily: 'inherit'
-                    }}
-                    interval={timePeriod === 'day' ? 2 : timePeriod === 'month' ? 2 : 0}
-                    minTickGap={10}
-                  />
-                  <YAxis 
-                    style={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontFamily: 'inherit'
-                    }}
-                    domain={[0, getNextLogicalCeiling(Math.max(...(analyticsData ? analyticsData.completionTimeByPeriod.map((d: any) => d.avgTime) : [0]))) || 20]}
-                  />
-                  <RechartsTooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: isMobile ? '12px' : '14px'
-                    }}
-                  />
-                  <Bar dataKey="avgTime" fill={colorPalette.tertiary} />
-                </BarChart>
+                {completionTimeChart}
               </ResponsiveContainer>
             )}
           </CardContent>

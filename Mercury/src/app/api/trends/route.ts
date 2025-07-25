@@ -8,30 +8,25 @@ export async function GET() {
     const trendsQuery = `
       SELECT
         'today' as period,
-        COUNT(DISTINCT s.session_id) AS total_sessions,
-        COUNT(DISTINCT s.order_id) AS total_orders,
-        COUNT(DISTINCT s.vehicle_id) AS total_fleet,
-        CAST(SUM(ss.total_distance_km) AS INTEGER) AS total_distance
-      FROM sessions s
-      JOIN session_summary ss
-        ON s.session_id = ss.session_id
-      WHERE ss.end_time >= DATE_TRUNC('day', NOW())
-        AND ss.end_time <  DATE_TRUNC('day', NOW()) + INTERVAL '1 day'
+        COUNT(DISTINCT session_id) AS total_sessions,
+        COUNT(DISTINCT order_id) AS total_orders,
+        COUNT(DISTINCT vehicle_id) AS total_fleet,
+        CAST(SUM(total_distance_km) AS INTEGER) AS total_distance
+      FROM session_summary 
+      WHERE end_time >= DATE_TRUNC('day', NOW())
+        AND end_time <  DATE_TRUNC('day', NOW()) + INTERVAL '1 day'
       
       UNION ALL
       
       SELECT
         'yesterday' as period,
-        COUNT(DISTINCT s.session_id) AS total_sessions,
-        COUNT(DISTINCT s.order_id) AS total_orders,
-        COUNT(DISTINCT s.vehicle_id) AS total_fleet,
-        CAST(SUM(ss.total_distance_km) AS INTEGER) AS total_distance
-      FROM sessions s
-      JOIN session_summary ss
-        ON s.session_id = ss.session_id
-      WHERE ss.end_time >= DATE_TRUNC('day', NOW()) - INTERVAL '1 day'
-        AND ss.end_time <  DATE_TRUNC('day', NOW())
-      
+        COUNT(DISTINCT session_id) AS total_sessions,
+        COUNT(DISTINCT order_id) AS total_orders,
+        COUNT(DISTINCT vehicle_id) AS total_fleet,
+        CAST(SUM(total_distance_km) AS INTEGER) AS total_distance
+      FROM session_summary
+      WHERE end_time >= DATE_TRUNC('day', NOW()) - INTERVAL '1 day'
+        AND end_time <  DATE_TRUNC('day', NOW())
       FORMAT TSVWithNames
     `;
 

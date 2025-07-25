@@ -31,20 +31,26 @@ models:
         description: "Estimated time to arrival (HH:MM:SS format)"
 
   - name: session_summary
-    description: "Summary statistics for completed delivery sessions"
+    description: "Summary statistics for delivery sessions (completed and active with movements)"
     columns:
       - name: session_id
         description: "Unique identifier for the session"
+      - name: vehicle_id
+        description: "Unique identifier for the vehicle"
+      - name: order_id
+        description: "Unique identifier for the order"
+      - name: status
+        description: "Current status of the session (from latest movement or order completion)"
       - name: start_time
-        description: "Timestamp when the session started"
+        description: "Timestamp when the session started (UTC)"
       - name: end_time
-        description: "Timestamp when the session ended"
+        description: "Timestamp when the session ended (UTC) - either completion time or latest movement"
       - name: duration_seconds
         description: "Total duration of the session in seconds"
       - name: total_distance_km
-        description: "Total distance traveled in kilometers"
+        description: "Total distance traveled in kilometers (rounded to 2 decimals)"
       - name: avg_speed_kmh
-        description: "Average speed during the session in kilometers per hour"
+        description: "Average speed during the session in kilometers per hour (rounded to 2 decimals)"
 
   - name: kpi_aggregates
     description: "Aggregated KPIs by time period (daily, weekly, monthly)"
@@ -64,18 +70,36 @@ models:
       - name: avg_speed_kmh
         description: "Average speed across all sessions in kilometers per hour"
 
-  - name: vehicle_fleet
+  - name: fleet_summary
     description: "Fleet management view with vehicle statistics and performance metrics"
     columns:
       - name: vehicle_id
         description: "Unique identifier for the vehicle"
       - name: first_seen
         description: "Timestamp when the vehicle was first observed"
-      - name: last_active_time
+      - name: last_updated
         description: "Timestamp of the last activity for this vehicle"
-      - name: active_sessions
-        description: "Number of active sessions for this vehicle"
-      - name: completed_trips
+      - name: is_active
+        description: "Whether the vehicle is currently active"
+      - name: trips
         description: "Number of completed trips for this vehicle"
-      - name: trips_per_day
-        description: "Average trips completed per day"
+      - name: total_km
+        description: "Total distance traveled by this vehicle in kilometers"
+
+  - name: users
+    description: "User authentication table for dashboard access"
+    columns:
+      - name: user_id
+        description: "Unique identifier for the user"
+      - name: username
+        description: "Username for login"
+      - name: email
+        description: "User's email address"
+      - name: password_hash
+        description: "Hashed password for security"
+      - name: created_at
+        description: "Timestamp when the user was created"
+      - name: updated_at
+        description: "Timestamp when the user was last updated"
+      - name: is_active
+        description: "Whether the user account is active"
