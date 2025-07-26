@@ -416,7 +416,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 </Box>
               ) : (
                 <Box>
-                  {filteredSessions.map((session, index) => {
+                  {filteredSessions.slice(0, 5).map((session, index) => {
                     const key = session.session_id || `session-${index}`;
                     return (
                       <Card
@@ -489,6 +489,17 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                       </Card>
                     );
                   })}
+                  {filteredSessions.length > 5 && (
+                    <Box sx={{ 
+                      textAlign: 'center', 
+                      py: 2,
+                      color: 'text.secondary'
+                    }}>
+                      <Typography variant="caption">
+                        Showing 5 of {filteredSessions.length} sessions
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               )}
             </Box>
@@ -580,64 +591,77 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                   <Typography variant="body2">No sessions found</Typography>
                 </Box>
               ) : (
-                <List>
-                  {filteredSessions.map((session, index) => {
-                    const key = session.session_id || `session-${index}`;
-                    return (
-                      <ListItem key={key} disablePadding sx={{ mb: 1 }}>
-                        <ListItemButton
-                          onClick={() => handleSessionClick(session)}
-                          sx={{
-                            borderRadius: 1,
-                            border: '1px solid #e0e0e0',
-                            '&:hover': {
-                              backgroundColor: '#f5f5f5',
-                            },
-                          }}
-                        >
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                  {session.vehicle_id}
-                                </Typography>
-                                <Chip
-                                  label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
-                                  sx={{
-                                    backgroundColor: getStatusColor(session.order_status || 'started'),
-                                    color: 'white',
-                                    fontWeight: 500,
-                                    fontSize: '0.75rem',
-                                    height: 20,
-                                    '& .MuiChip-label': {
-                                      px: 0.5,
-                                    }
-                                  }}
-                                  size="small"
-                                />
-                              </Box>
-                            }
-                            secondary={
-                              <Box>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                  {session.session_id}
-                                </Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                <>
+                  <List>
+                    {filteredSessions.slice(0, 5).map((session, index) => {
+                      const key = session.session_id || `session-${index}`;
+                      return (
+                        <ListItem key={key} disablePadding sx={{ mb: 1 }}>
+                          <ListItemButton
+                            onClick={() => handleSessionClick(session)}
+                            sx={{
+                              borderRadius: 1,
+                              border: '1px solid #e0e0e0',
+                              '&:hover': {
+                                backgroundColor: '#f5f5f5',
+                              },
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                    {session.vehicle_id}
                                   </Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    ETA: {session.eta || 'N/A'}
-                                  </Typography>
+                                  <Chip
+                                    label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
+                                    sx={{
+                                      backgroundColor: getStatusColor(session.order_status || 'started'),
+                                      color: 'white',
+                                      fontWeight: 500,
+                                      fontSize: '0.75rem',
+                                      height: 20,
+                                      '& .MuiChip-label': {
+                                        px: 0.5,
+                                      }
+                                    }}
+                                    size="small"
+                                  />
                                 </Box>
-                              </Box>
-                            }
-                          />
-                        </ListItemButton>
-                      </ListItem>
-                    );
-                  })}
-                </List>
+                              }
+                              secondary={
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    {session.session_id}
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      ETA: {session.eta || 'N/A'}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                  {filteredSessions.length > 5 && (
+                    <Box sx={{ 
+                      textAlign: 'center', 
+                      py: 2,
+                      color: 'text.secondary'
+                    }}>
+                      <Typography variant="caption">
+                        Showing 5 of {filteredSessions.length} sessions
+                      </Typography>
+                    </Box>
+                  )}
+                </>
               )}
             </Box>
           </Box>
