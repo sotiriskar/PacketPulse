@@ -1,84 +1,116 @@
-from typing import Dict, Any, Optional
-from dataclasses import dataclass
-from datetime import datetime
-import random
-import enum
+from __future__ import annotations
+from typing import List, Tuple, Optional, Dict, Any
+from dataclasses import dataclass, field
+import enum, math, time, datetime, uuid
 
+# -------- default Athens route (override per delivery if you want) ----------
+DEFAULT_WAYPOINTS: List[Tuple[float, float]] = [
+    (37.968374406388705, 23.731513949419654),
+    (37.968222593295074, 23.731289166350056),
+    (37.96810098071369,  23.73109428590979),
+    (37.96800071594643,  23.7310709926599),
+    (37.96789868047004,  23.73088079653709),
+    (37.9444742712265,   23.70076769379892)
+]
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    φ1, φ2 = map(math.radians, (lat1, lat2))
+    dφ     = math.radians(lat2 - lat1)
+    dλ     = math.radians(lon2 - lon1)
+    a = math.sin(dφ/2)**2 + math.cos(φ1)*math.cos(φ2)*math.sin(dλ/2)**2
+    return 2*R*math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 class DeliveryStatus(str, enum.Enum):
-    STARTED = "started"
-    EN_ROUTE = "en_route"
+    STARTED   = "started"
+    EN_ROUTE  = "en_route"
     COMPLETED = "completed"
 
 @dataclass
 class PacketDelivery:
-    """Represents a packet delivery with location tracking."""
-    device_id: str
-    vehicle_id: str
-    session_id: str
-    order_id: str
+    device_id:    str
+    vehicle_id:   str
+    order_id:     str
+    # ---------- overridable configuration ----------
+    speed_kmh:    float = 3250.0  # 1000 ~ 20 km/h
+    time_factor:  float = 1.0
+    waypoints:    Optional[List[Tuple[float, float]]] = None
+    # -------------------------------------------------
+    session_id:   str = field(default_factory=lambda: str(uuid.uuid4()))
     
+    # internal fields initialised later
+    _seg: int = field(init=False, default=0)
+    _dist_in_seg: float = field(init=False, default=0.0)
+    _seg_lens: List[float] = field(init=False)
+    _last_tick: float = field(init=False, default_factory=time.perf_counter)
+    status: DeliveryStatus = field(init=False, default=DeliveryStatus.STARTED)
+    
+    # -------------------------------------------------
     def __post_init__(self):
-        # Initialize with random coordinates in NYC area
-        self.start_lat = 40.7 + random.uniform(-0.1, 0.1)
-        self.start_lon = -74.0 + random.uniform(-0.1, 0.1)
-        self.end_lat = 40.7 + random.uniform(-0.1, 0.1)
-        self.end_lon = -74.0 + random.uniform(-0.1, 0.1)
-        
-        # Current position starts at the starting location
-        self.current_lat = self.start_lat
-        self.current_lon = self.start_lon
-        
-        # Set initial status
-        self.status = DeliveryStatus.STARTED
-        
-        # Set movement parameters
-        self.speed = random.uniform(0.0001, 0.0005)  # degrees per update
-        self.progress = 0.0  # 0.0 to 1.0
-        
-    def update_position(self, speed: Optional[float] = None):
-        """Update the current position based on progress towards destination.
-
-        Parameters
-        ----------
-        speed: Optional[float]
-            If provided, use this value instead of the delivery's own ``self.speed``.  This
-            allows an external controller (e.g. the Simulator) to accelerate or slow down
-            all deliveries uniformly without modifying each object individually.
-        """
-        if self.progress >= 1.0:
-            # Already at destination
+        self.waypoints = self.waypoints or DEFAULT_WAYPOINTS
+        self.start_lat, self.start_lon = self.waypoints[0]
+        self.end_lat,   self.end_lon   = self.waypoints[-1]
+        self.current_lat, self.current_lon = self.start_lat, self.start_lon
+        self._seg_lens = [haversine_km(*a, *b) for a, b in zip(
+                          self.waypoints[:-1], self.waypoints[1:])]
+        self._prev_lat, self._prev_lon = self.current_lat, self.current_lon
+    
+    # -------------------------------------------------
+    def update_position(self, delta_seconds: Optional[float] = None):
+        if self.status is DeliveryStatus.COMPLETED:
             return
-
-        # Use the override speed if supplied, otherwise fall back to the object's speed
-        increment = speed if speed is not None else self.speed
-
-        # Increment progress towards completion
-        self.progress += increment
-        if self.progress > 1.0:
-            self.progress = 1.0
-
-        # Update current geographic position (simple linear interpolation)
-        self.current_lat = self.start_lat + (self.end_lat - self.start_lat) * self.progress
-        self.current_lon = self.start_lon + (self.end_lon - self.start_lon) * self.progress
+        # real‑time step unless overridden
+        if delta_seconds is None:
+            now = time.perf_counter()
+            dt_real = now - self._last_tick
+            self._last_tick = now
+        else:
+            dt_real = delta_seconds
+        dt = dt_real * self.time_factor
+        if dt <= 0: return
+        km_to_go = self.speed_kmh * dt / 3600.0
+        
+        while km_to_go > 0 and self._seg < len(self._seg_lens):
+            seg_len   = self._seg_lens[self._seg]
+            remain    = seg_len - self._dist_in_seg
+            if km_to_go >= remain:       # jump to next waypoint
+                self._seg += 1
+                self._dist_in_seg = 0.0
+                self.current_lat, self.current_lon = self.waypoints[self._seg]
+                km_to_go -= remain
+            else:                         # stay within current leg
+                self._dist_in_seg += km_to_go
+                frac = self._dist_in_seg / seg_len
+                lat1, lon1 = self.waypoints[self._seg]
+                lat2, lon2 = self.waypoints[self._seg + 1]
+                self.current_lat = lat1 + (lat2 - lat1) * frac
+                self.current_lon = lon1 + (lon2 - lon1) * frac
+                km_to_go = 0.0
+        
+        if self._seg >= len(self._seg_lens):
+            self.status = DeliveryStatus.COMPLETED
+        elif self.status is DeliveryStatus.STARTED:
+            self.status = DeliveryStatus.EN_ROUTE
+        
+        self._prev_lat, self._prev_lon = self.current_lat, self.current_lon
     
+    # -------------------------------------------------
     def is_completed(self) -> bool:
-        """Check if the delivery has reached its destination."""
-        return self.progress >= 1.0
+        return self.status is DeliveryStatus.COMPLETED
     
+    # -------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the delivery to a dictionary for serialization."""
         return {
             "device_id": self.device_id,
             "vehicle_id": self.vehicle_id,
             "session_id": self.session_id,
-            "order_id": self.order_id,
-            "status": self.status,
-            "timestamp": datetime.utcnow().isoformat(),
-            "start_lat": self.start_lat,
-            "start_lon": self.start_lon,
-            "end_lat": self.end_lat,
-            "end_lon": self.end_lon,
+            "order_id":   self.order_id,
+            "status":     self.status,
+            "timestamp":  datetime.datetime.utcnow().isoformat(),
+            "start_lat":  self.start_lat,
+            "start_lon":  self.start_lon,
+            "end_lat":    self.end_lat,
+            "end_lon":    self.end_lon,
             "current_lat": self.current_lat,
             "current_lon": self.current_lon
-        } 
+        }
