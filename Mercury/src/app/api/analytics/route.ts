@@ -299,7 +299,7 @@ export async function GET(request: Request) {
     });
 
     // Calculate average completion time by time period
-    const calculateAverageCompletionTimeByPeriod = (data: any[], period: string) => {
+    const calculateAverageCompletionTimeByPeriod = (data: Array<{ day: string; latency_minutes: string }>, period: string) => {
       if (data.length === 0) {
         if (period === 'day') {
           return Array.from({ length: 24 }, (_, i) => ({

@@ -730,9 +730,9 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <Typography variant="h6">
+              <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Session Details - {selectedSession.session_id}
-              </Typography>
+              </Box>
               <IconButton
                 onClick={() => setSelectedSession(null)}
                 size="small"
@@ -840,12 +840,12 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                 {getLocationIcon(selectedCoordinates.type)}
-                <Typography variant="h6">
+                <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
                   {selectedCoordinates.type === 'pickup' ? 'Pickup' : 
                    selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'} Location
-                </Typography>
+                </Box>
               </Box>
               <IconButton
                 onClick={() => setCoordinateDialogOpen(false)}
@@ -880,19 +880,19 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     {selectedCoordinates.session.order_id}
                   </Typography>
                 </Box>
-                <Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="caption" color="text.secondary">Location Type</Typography>
                   <Chip
                     label={selectedCoordinates.type === 'pickup' ? 'Pickup' : 
                            selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'}
-                    icon={getLocationIcon(selectedCoordinates.type)}
                     sx={{
                       backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.secondary : 
                                        selectedCoordinates.type === 'delivery' ? colorPalette.primaryVeryDark : 
                                        colorPalette.primary,
                       color: 'white',
                       fontWeight: 500,
-                      mt: 0.5
+                      mt: 0.5,
+                      alignSelf: 'flex-start'
                     }}
                     size="small"
                   />

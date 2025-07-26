@@ -79,7 +79,7 @@ export async function GET() {
             obj[header] = value;
           }
           return obj;
-        }, {} as Record<string, any>);
+        }, {} as Record<string, string | number | null>);
         
 
         return obj;

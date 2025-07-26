@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify the JWT token
-    const decoded = jwt.verify(authToken, JWT_SECRET) as any;
+    const decoded = jwt.verify(authToken, JWT_SECRET) as { email: string };
     const { username, email } = await request.json();
 
     if (!username || !email) {

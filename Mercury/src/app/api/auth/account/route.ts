@@ -17,7 +17,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify the JWT token
-    const decoded = jwt.verify(authToken, JWT_SECRET) as any;
+    const decoded = jwt.verify(authToken, JWT_SECRET) as { email: string };
 
     // Get current user
     const currentUser = await findUserByEmail(decoded.email);

@@ -186,7 +186,7 @@ export default function Login({ onLogin, onSwitchToSignup, loading, error }: Log
 
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Don't have an account?
+              Don&apos;t have an account?
             </Typography>
             <Link
               component="button"

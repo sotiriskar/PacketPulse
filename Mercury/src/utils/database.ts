@@ -82,7 +82,7 @@ export async function findUserById(userId: string): Promise<User | null> {
 
 export async function updateUser(userId: string, updates: Partial<Omit<User, 'user_id' | 'created_at' | 'updated_at'>>): Promise<void> {
   const updateFields = [];
-  const queryParams: any = { userId };
+  const queryParams: Record<string, string | boolean> = { userId };
   
   if (updates.username !== undefined) {
     updateFields.push('username = {username:String}');

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify the JWT token
-    const decoded = jwt.verify(authToken, JWT_SECRET) as any;
+    const decoded = jwt.verify(authToken, JWT_SECRET) as { user_id: string };
 
     // Get user from database to ensure they still exist and are active
     const user = await findUserById(decoded.user_id);

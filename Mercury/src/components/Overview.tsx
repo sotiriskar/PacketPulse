@@ -66,8 +66,8 @@ interface OverviewProps {
   sessions: Session[];
   stats: Stats;
   chartData: {
-    distanceData: any[];
-    sessionData: any[];
+    distanceData: Array<{ date: string; distance: number }>;
+    sessionData: Array<{ date: string; sessions: number }>;
   };
   trends: {
     today: Stats;

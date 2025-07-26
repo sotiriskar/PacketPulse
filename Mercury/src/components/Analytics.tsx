@@ -13,7 +13,6 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemText,
   Divider,
   ToggleButton,
   ToggleButtonGroup,
@@ -30,7 +29,7 @@ import {
   WorkspacePremium,
   MilitaryTech,
 } from '@mui/icons-material';
-import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { ApiService } from '../utils/api';
 
 // Color palette based on #fe4e50
@@ -68,6 +67,42 @@ interface Stats {
   total_completed_trips: number;
 }
 
+interface AnalyticsData {
+  completionRate: number;
+  peakHourActivity: {
+    peakHour: string;
+    peakCount: number;
+  };
+  peakHourData: Array<{
+    hour: string;
+    deliveries: number;
+  }>;
+  avgDurationMinutes: number;
+  avgDistanceKm: number;
+  durationDistribution: Array<{
+    duration: string;
+    count: number;
+  }>;
+  completionTimeByPeriod: Array<{
+    timeUnit: string;
+    avgTime: number;
+  }>;
+  fleetStatus: {
+    activeVehicles: number;
+    availableVehicles: number;
+    maintenanceVehicles: number;
+  };
+  period: string;
+  topPerformers: Array<{
+    vehicleId: string;
+    trips: number;
+    totalKm: number;
+    completion: number;
+    firstSeen: string;
+    lastUpdated: string;
+  }>;
+}
+
 interface AnalyticsProps {
   sessions: Session[];
   stats: Stats;
@@ -75,47 +110,12 @@ interface AnalyticsProps {
   error: string | null;
 }
 
-export default function Analytics({ sessions, stats, loading, error }: AnalyticsProps) {
+export default function Analytics({ loading, error }: AnalyticsProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   const [timePeriod, setTimePeriod] = useState('day');
-  const [analyticsData, setAnalyticsData] = useState<{
-    completionRate: number;
-    peakHourActivity: {
-      peakHour: string;
-      peakCount: number;
-    };
-    peakHourData: Array<{
-      hour: string;
-      deliveries: number;
-    }>;
-    avgDurationMinutes: number;
-    avgDistanceKm: number;
-    durationDistribution: Array<{
-      duration: string;
-      count: number;
-    }>;
-    completionTimeByPeriod: Array<{
-      timeUnit: string;
-      avgTime: number;
-    }>;
-    fleetStatus: {
-      activeVehicles: number;
-      availableVehicles: number;
-      maintenanceVehicles: number;
-    };
-    period: string;
-    topPerformers: Array<{
-      vehicleId: string;
-      trips: number;
-      totalKm: number;
-      completion: number;
-      firstSeen: string;
-      lastUpdated: string;
-    }>;
-  } | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
@@ -129,7 +129,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       try {
         const response = await ApiService.getAnalytics(timePeriod);
         if (response.success && response.data) {
-          setAnalyticsData(response.data as any);
+          setAnalyticsData(response.data as AnalyticsData);
         } else {
           setAnalyticsError(response.message || 'Failed to fetch analytics data');
         }
@@ -176,15 +176,15 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
       { hour: '20:00', deliveries: 9 },
       { hour: '22:00', deliveries: 4 },
     ];
-  }, [JSON.stringify(analyticsData?.peakHourData)]);
+  }, [analyticsData]);
 
   const memoizedDurationData = useMemo(() => {
     return analyticsData ? analyticsData.durationDistribution : [];
-  }, [JSON.stringify(analyticsData?.durationDistribution)]);
+  }, [analyticsData]);
 
   const memoizedCompletionTimeData = useMemo(() => {
     return analyticsData ? analyticsData.completionTimeByPeriod : [];
-  }, [JSON.stringify(analyticsData?.completionTimeByPeriod)]);
+  }, [analyticsData]);
 
   // Memoized chart components to prevent re-renders
   const peakHourChart = useMemo(() => (
@@ -276,7 +276,7 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
           fontSize: isMobile ? '10px' : '12px',
           fontFamily: 'inherit'
         }}
-        domain={[0, getNextLogicalCeiling(Math.max(...memoizedCompletionTimeData.map((d: any) => d.avgTime))) || 20]}
+        domain={[0, getNextLogicalCeiling(Math.max(...memoizedCompletionTimeData.map((d) => d.avgTime))) || 20]}
       />
       <RechartsTooltip 
         contentStyle={{
@@ -719,113 +719,107 @@ export default function Analytics({ sessions, stats, loading, error }: Analytics
                          index + 1}
                       </Avatar>
                     </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                            Vehicle ({performer.vehicleId})
-                          </Typography>
-                          {index === 0 && <Star sx={{ color: '#ffd700', fontSize: { xs: 16, sm: 20 } }} />}
-                        </Box>
-                      }
-                      secondary={
-                        <Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {performer.trips} trips • {performer.totalKm.toFixed(1)} km total
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                    <Box sx={{ flex: 1, ml: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                          Vehicle ({performer.vehicleId})
+                        </Typography>
+                        {index === 0 && <Star sx={{ color: '#ffd700', fontSize: { xs: 16, sm: 20 } }} />}
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, mb: 1 }}>
+                        {performer.trips} trips • {performer.totalKm.toFixed(1)} km total
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                        <Chip 
+                          label={`${(performer.completion * 100).toFixed(0)}% completion`} 
+                          size="small" 
+                          sx={{ 
+                            borderColor: colorPalette.primary,
+                            color: colorPalette.primary,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                          }}
+                          variant="outlined"
+                        />
+                        <Chip 
+                          label={`${(performer.totalKm / performer.trips).toFixed(1)} km/trip`} 
+                          size="small" 
+                          sx={{ 
+                            borderColor: colorPalette.primary,
+                            color: colorPalette.primary,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                          }}
+                          variant="outlined"
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {index === 0 && (
+                          <>
                             <Chip 
-                              label={`${(performer.completion * 100).toFixed(0)}% completion`} 
+                              label="Champion" 
                               size="small" 
                               sx={{ 
-                                borderColor: colorPalette.primary,
-                                color: colorPalette.primary,
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#fff3cd',
+                                color: '#856404'
                               }}
-                              variant="outlined"
                             />
                             <Chip 
-                              label={`${(performer.totalKm / performer.trips).toFixed(1)} km/trip`} 
+                              label="MVP" 
                               size="small" 
                               sx={{ 
-                                borderColor: colorPalette.primary,
-                                color: colorPalette.primary,
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#e8f5e8',
+                                color: '#2e7d32'
                               }}
-                              variant="outlined"
                             />
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-                            {index === 0 && (
-                              <>
-                                <Chip 
-                                  label="Champion" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#fff3cd',
-                                    color: '#856404'
-                                  }}
-                                />
-                                <Chip 
-                                  label="MVP" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#e8f5e8',
-                                    color: '#2e7d32'
-                                  }}
-                                />
-                              </>
-                            )}
-                            {index === 1 && (
-                              <>
-                                <Chip 
-                                  label="Runner Up" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#e3f2fd',
-                                    color: '#1976d2'
-                                  }}
-                                />
-                                <Chip 
-                                  label="Consistent" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#f3e5f5',
-                                    color: '#7b1fa2'
-                                  }}
-                                />
-                              </>
-                            )}
-                            {index === 2 && (
-                              <>
-                                <Chip 
-                                  label="Bronze" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#fff3e0',
-                                    color: '#f57c00'
-                                  }}
-                                />
-                                <Chip 
-                                  label="Reliable" 
-                                  size="small" 
-                                  sx={{ 
-                                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                                    backgroundColor: '#e0f2f1',
-                                    color: '#00695c'
-                                  }}
-                                />
-                              </>
-                            )}
-                          </Box>
-                        </Box>
-                      }
-                    />
+                          </>
+                        )}
+                        {index === 1 && (
+                          <>
+                            <Chip 
+                              label="Runner Up" 
+                              size="small" 
+                              sx={{ 
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#e3f2fd',
+                                color: '#1976d2'
+                              }}
+                            />
+                            <Chip 
+                              label="Consistent" 
+                              size="small" 
+                              sx={{ 
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#f3e5f5',
+                                color: '#7b1fa2'
+                              }}
+                            />
+                          </>
+                        )}
+                        {index === 2 && (
+                          <>
+                            <Chip 
+                              label="Bronze" 
+                              size="small" 
+                              sx={{ 
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#fff3e0',
+                                color: '#f57c00'
+                              }}
+                            />
+                            <Chip 
+                              label="Reliable" 
+                              size="small" 
+                              sx={{ 
+                                fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                                backgroundColor: '#e0f2f1',
+                                color: '#00695c'
+                              }}
+                            />
+                          </>
+                        )}
+                      </Box>
+                    </Box>
                   </ListItem>
                   {index < analyticsData.topPerformers.length - 1 && <Divider variant="inset" component="li" />}
                 </React.Fragment>

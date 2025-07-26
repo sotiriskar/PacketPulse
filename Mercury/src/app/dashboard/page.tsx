@@ -103,7 +103,10 @@ export default function Dashboard() {
       
       // Update trends data
       if (trendsResponse.success && trendsResponse.data) {
-        const trendsData = trendsResponse.data as any;
+        const trendsData = trendsResponse.data as {
+          today: Stats;
+          yesterday: Stats;
+        };
         setTrends(trendsData);
         setStats(trendsData.today || {
           total_sessions: 0,
@@ -201,7 +204,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const handleSessionClick = (session: any) => {
+  const handleSessionClick = (session: Session) => {
     // Handle session click - could open a dialog or navigate to details
     console.log('Session clicked:', session);
   };
@@ -224,8 +227,8 @@ export default function Dashboard() {
       case 'overview':
         return (
           <Overview
-            sessions={sessions as any}
-            stats={stats as any}
+            sessions={sessions}
+            stats={stats}
             chartData={chartData}
             trends={trends}
             loading={loading}
@@ -236,7 +239,7 @@ export default function Dashboard() {
       case 'map':
         return (
           <LiveMap
-            sessions={activeSessions as any}
+            sessions={activeSessions}
             loading={loading}
             error={error}
             onSessionClick={handleSessionClick}
@@ -245,8 +248,8 @@ export default function Dashboard() {
       case 'analytics':
         return (
           <Analytics
-            sessions={sessions as any}
-            stats={stats as any}
+            sessions={sessions}
+            stats={stats}
             loading={loading}
             error={error}
           />
