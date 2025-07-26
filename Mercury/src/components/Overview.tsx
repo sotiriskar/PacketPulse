@@ -21,6 +21,7 @@ import {
 import {
   North,
   South,
+  Remove,
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -146,20 +147,22 @@ const KPICard = ({
             {formatNumber(value)}{unit}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {trend >= 0 ? (
+            {trend > 0 ? (
               <North sx={{ color: colorPalette.success, fontSize: '0.75rem', mr: 0.5 }} />
-            ) : (
+            ) : trend < 0 ? (
               <South sx={{ color: colorPalette.error, fontSize: '0.75rem', mr: 0.5 }} />
+            ) : (
+              <Remove sx={{ color: colorPalette.gray, fontSize: '0.75rem', mr: 0.5 }} />
             )}
             <Typography 
               variant="caption" 
               sx={{ 
-                color: trend >= 0 ? colorPalette.success : colorPalette.error, 
+                color: trend > 0 ? colorPalette.success : trend < 0 ? colorPalette.error : colorPalette.gray, 
                 fontWeight: 500,
                 fontSize: { xs: '0.65rem', sm: '0.75rem' }
               }}
             >
-              {trend >= 0 ? '+' : ''}{trend}%
+              {trend > 0 ? '+' : trend < 0 ? '-' : ''}{Math.abs(trend)}%
             </Typography>
           </Box>
         </Box>

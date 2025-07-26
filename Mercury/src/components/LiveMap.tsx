@@ -92,13 +92,6 @@ interface LiveMapProps {
   onSessionClick: (session: Session) => void;
 }
 
-interface CoordinateInfo {
-  type: 'pickup' | 'delivery' | 'vehicle';
-  session: Session;
-  latitude: number;
-  longitude: number;
-}
-
 export default function LiveMap({ sessions, loading, error, onSessionClick }: LiveMapProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -106,8 +99,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilterSession, setSelectedFilterSession] = useState<Session | null>(null);
-  const [coordinateDialogOpen, setCoordinateDialogOpen] = useState(false);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<CoordinateInfo | null>(null);
   const [mobileSessionDrawerOpen, setMobileSessionDrawerOpen] = useState(false);
 
   // Memoized filtered sessions
@@ -146,46 +137,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
     }
   }, [isMobile]);
 
-  const handleCoordinateClick = useCallback((type: 'pickup' | 'delivery' | 'vehicle', session: Session) => {
-    let latitude: number | undefined;
-    let longitude: number | undefined;
-
-    switch (type) {
-      case 'pickup':
-        latitude = session.start_latitude;
-        longitude = session.start_longitude;
-        break;
-      case 'delivery':
-        latitude = session.end_latitude;
-        longitude = session.end_longitude;
-        break;
-      case 'vehicle':
-        latitude = session.current_latitude;
-        longitude = session.current_longitude;
-        break;
-    }
-
-    if (!latitude || !longitude) {
-      console.warn(`No ${type} coordinates available for session:`, session.session_id);
-      return;
-    }
-
-    setSelectedCoordinates({ type, session, latitude, longitude });
-    setCoordinateDialogOpen(true);
-  }, []);
-
-  const handlePickupClick = useCallback((session: Session) => {
-    handleCoordinateClick('pickup', session);
-  }, [handleCoordinateClick]);
-
-  const handleDeliveryClick = useCallback((session: Session) => {
-    handleCoordinateClick('delivery', session);
-  }, [handleCoordinateClick]);
-
-  const handleVehicleClick = useCallback((session: Session) => {
-    handleCoordinateClick('vehicle', session);
-  }, [handleCoordinateClick]);
-
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'started':
@@ -209,19 +160,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
         return <Schedule />;
       default:
         return <DirectionsCar />;
-    }
-  }, []);
-
-  const getLocationIcon = useCallback((type: string) => {
-    switch (type) {
-      case 'pickup':
-        return <LocalShipping />;
-      case 'delivery':
-        return <ShoppingCart />;
-      case 'vehicle':
-        return <LocationOn />;
-      default:
-        return <LocationOn />;
     }
   }, []);
 
@@ -294,11 +232,8 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               }}
             >
               <MapComponent
-                sessions={filteredSessions}
+                sessions={sessions}
                 selectedSession={selectedFilterSession}
-                onVehicleClick={handleVehicleClick}
-                onPickupClick={handlePickupClick}
-                onDeliveryClick={handleDeliveryClick}
               />
               
               {/* Map legend */}
@@ -359,7 +294,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     border: '1px solid white',
                     mr: 0.5 
                   }}>
-                    🛍️
+                    📍
                   </Box>
                   Delivery
                 </Typography>
@@ -809,127 +744,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button 
                 onClick={() => setSelectedSession(null)}
-                variant="outlined"
-                sx={{ borderRadius: 2 }}
-              >
-                Close
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-
-      {/* Coordinate Details Dialog */}
-      <Dialog
-        open={coordinateDialogOpen}
-        onClose={() => setCoordinateDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            maxHeight: '90vh',
-          }
-        }}
-      >
-        {selectedCoordinates && (
-          <>
-            <DialogTitle sx={{ 
-              pb: 1,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                {getLocationIcon(selectedCoordinates.type)}
-                <Box component="span" sx={{ fontWeight: 'bold', fontSize: '1.25rem' }}>
-                  {selectedCoordinates.type === 'pickup' ? 'Pickup' : 
-                   selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'} Location
-                </Box>
-              </Box>
-              <IconButton
-                onClick={() => setCoordinateDialogOpen(false)}
-                size="small"
-                sx={{ color: 'text.secondary' }}
-              >
-                <Close />
-              </IconButton>
-            </DialogTitle>
-            <Divider />
-            <DialogContent sx={{ pt: 2 }}>
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
-                gap: 2 
-              }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Session ID</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {selectedCoordinates.session.session_id}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Vehicle ID</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {selectedCoordinates.session.vehicle_id}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Order ID</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {selectedCoordinates.session.order_id}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="caption" color="text.secondary">Location Type</Typography>
-                  <Chip
-                    label={selectedCoordinates.type === 'pickup' ? 'Pickup' : 
-                           selectedCoordinates.type === 'delivery' ? 'Delivery' : 'Vehicle'}
-                    sx={{
-                      backgroundColor: selectedCoordinates.type === 'pickup' ? colorPalette.secondary : 
-                                       selectedCoordinates.type === 'delivery' ? colorPalette.primaryVeryDark : 
-                                       colorPalette.primary,
-                      color: 'white',
-                      fontWeight: 500,
-                      mt: 0.5,
-                      alignSelf: 'flex-start'
-                    }}
-                    size="small"
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Latitude</Typography>
-                  <Typography variant="body1" sx={{ 
-                    fontFamily: 'monospace',
-                    fontWeight: 500,
-                    backgroundColor: '#f5f5f5',
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 1,
-                    fontSize: '0.875rem'
-                  }}>
-                    {selectedCoordinates.latitude.toFixed(6)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Longitude</Typography>
-                  <Typography variant="body1" sx={{ 
-                    fontFamily: 'monospace',
-                    fontWeight: 500,
-                    backgroundColor: '#f5f5f5',
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 1,
-                    fontSize: '0.875rem'
-                  }}>
-                    {selectedCoordinates.longitude.toFixed(6)}
-                  </Typography>
-                </Box>
-              </Box>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button 
-                onClick={() => setCoordinateDialogOpen(false)}
                 variant="outlined"
                 sx={{ borderRadius: 2 }}
               >
