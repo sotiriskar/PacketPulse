@@ -1,65 +1,178 @@
-# Mars - Packet Delivery Simulator
+# Mars - Delivery Simulator
 
-Mars is a simulation component that generates packet delivery data and transmits it to the Venus API via WebSocket.
+Mars is a sophisticated delivery simulation component that generates realistic packet delivery data and transmits it to the Venus API via WebSocket. It simulates multiple delivery vehicles with real-time GPS tracking, configurable routes, and status updates.
 
 ## Features
 
-- Simulates multiple devices delivering packets from point A to point B
-- UUID-based identifiers for devices, vehicles, and sessions
-- Real-time position updates with status tracking
-- Configurable number of simulated devices
-- Speed validation (0-120 km/h equivalent)
-- Randomized start and end locations from a configurable list
+- **Multi-Device Simulation**: Simulates multiple devices delivering packets from point A to point B
+- **Real-Time GPS Tracking**: UUID-based identifiers for devices, vehicles, and sessions with live position updates
+- **Configurable Routes**: Randomized start and end locations from a configurable list
+- **Speed Validation**: Realistic speed simulation (0-120 km/h equivalent)
+- **Status Tracking**: Complete delivery lifecycle (not_started → en_route → completed)
+- **WebSocket Communication**: Real-time data transmission to Venus API
 
 ## Requirements
 
 - Python 3.9+
 - Dependencies listed in `requirements.txt`
+- Network access to Venus API (default: ws://localhost:8000/ws)
 
 ## Installation
 
-1. Install dependencies:
+### Local Development
 
+1. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. (Optional) Edit the configuration file `config.py` to adjust simulation parameters
+2. **Configure settings (optional):**
+Edit `src/config/settings.py` to adjust simulation parameters
+
+### Docker Setup
+
+1. **Build the image:**
+```bash
+docker build -t mars:latest .
+```
+
+2. **Run with Docker Compose (recommended):**
+```bash
+cd Infrastructure
+docker-compose up mars
+```
 
 ## Configuration
 
-Edit `config.py` to customize:
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBSOCKET_URL` | `ws://venus:8000/ws` | WebSocket URL of Venus API |
+| `API_KEY` | `mars-secret-key` | API key for authentication |
+| `TOTAL_SESSIONS` | `10` | Number of delivery sessions to simulate |
+| `UPDATE_INTERVAL` | `5` | Time between updates in seconds |
+| `NUM_DEVICES` | `5` | Number of devices to simulate |
+
+### Custom Configuration
+
+Edit `src/config/settings.py` to customize:
 
 - `NUM_DEVICES`: Number of devices to simulate
 - `UPDATE_INTERVAL`: Time between updates in seconds
-- `API_URL`: WebSocket URL of Venus API (default: ws://localhost:8000/ws)
+- `API_URL`: WebSocket URL of Venus API
 - `API_KEY`: API key for authentication
 - `DEFAULT_LOCATIONS`: Dictionary of named locations with coordinates
 
 ## Usage
 
-Run the simulator with:
+### Running Locally
 
 ```bash
-python -m Mars.simulator
+python main.py
 ```
 
-The simulator will:
-1. Initialize packet deliveries with the specified number of devices
-2. Begin moving packets along their routes
-3. Send telemetry updates to Venus API via WebSocket
-4. Track delivery status (not_started → en_route → completed)
-5. Continue until all deliveries are complete or interrupted
+### Running with Docker Compose
+
+From the Infrastructure directory:
+```bash
+# Start all services
+docker-compose up -d
+
+# Start Mars simulator
+docker-compose up mars
+
+# Or run in detached mode
+docker-compose up -d mars
+```
+
+### Running Individual Docker Container
+
+```bash
+# Build and run
+docker build -t mars:latest .
+docker run --network packetpulse_network mars:latest
+```
 
 ## Data Format
 
 Each delivery record includes:
-- `device_id`: UUID of the device
-- `vehicle_id`: UUID of the vehicle
-- `session_id`: UUID of the current session
-- `order_number`: Sequential order number
-- `timestamp`: UNIX timestamp
-- `current_lat`, `current_lon`: Current latitude/longitude
-- `start_lat`, `start_lon`: Starting latitude/longitude
-- `end_lat`, `end_lon`: Destination latitude/longitude
-- `status`: Current status (started, en_route, completed) 
+
+```json
+{
+  "device_id": "uuid-of-device",
+  "vehicle_id": "uuid-of-vehicle", 
+  "session_id": "uuid-of-session",
+  "order_number": "sequential-order-number",
+  "timestamp": "unix-timestamp",
+  "current_lat": 40.7527,
+  "current_lon": -73.9772,
+  "start_lat": 40.7527,
+  "start_lon": -73.9772,
+  "end_lat": 40.7580,
+  "end_lon": -73.9855,
+  "status": "en_route"
+}
+```
+
+## Simulation Behavior
+
+The simulator will:
+1. Initialize packet deliveries with the specified number of devices
+2. Begin moving packets along their routes with realistic speeds
+3. Send telemetry updates to Venus API via WebSocket
+4. Track delivery status through the complete lifecycle
+5. Continue until all deliveries are complete or interrupted
+
+## Monitoring
+
+- **Logs**: View simulation progress and connection status
+- **WebSocket Status**: Monitor connection to Venus API
+- **Delivery Progress**: Track completion status of all sessions
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection Failed**: Ensure Venus API is running and accessible
+2. **Authentication Error**: Verify API key matches Venus configuration
+3. **Network Issues**: Check Docker network configuration when using containers
+
+### Debug Mode
+
+Enable debug logging by setting environment variable:
+```bash
+export LOG_LEVEL=DEBUG
+```
+
+## Integration
+
+Mars integrates with the PacketPulse platform:
+- **Input**: Configuration and simulation parameters
+- **Output**: Real-time delivery data via WebSocket to Venus
+- **Downstream**: Data flows to Kafka → Neptune/Jupiter → Uranus → Mercury
+
+## Development
+
+### Project Structure
+
+```
+Mars/
+├── main.py                 # Main entry point
+├── src/
+│   ├── config/
+│   │   └── settings.py    # Configuration management
+│   ├── models/
+│   │   └── session.py     # Data models
+│   └── utils/
+│       └── data_processor.py # Simulation utilities
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+### Adding New Features
+
+1. **New Location Types**: Add to `DEFAULT_LOCATIONS` in settings
+2. **Custom Status Types**: Extend the status enum in models
+3. **Additional Metrics**: Modify the data format and Venus API accordingly 

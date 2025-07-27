@@ -1,75 +1,253 @@
-# Venus - Packet Tracking API
+# Venus - WebSocket API Gateway
 
-Venus is a WebSocket API that receives packet delivery data from Mars simulators and stores it in CSV files.
+Venus is a FastAPI-based WebSocket server that receives delivery data from Mars simulators, validates incoming data, and publishes it to Kafka for downstream processing. It serves as the real-time data ingestion gateway for the PacketPulse platform.
 
 ## Features
 
-- Real-time data reception via WebSockets
-- CSV storage for delivery tracking with daily files
-- API key authentication
-- Full data validation (UUIDs, coordinates, status values)
-- Health check and info endpoints
-- Configurable security settings
+- **Real-Time WebSocket Communication**: Receives delivery data from Mars simulators via WebSocket
+- **Data Validation**: Full validation of incoming data using Pydantic models
+- **Kafka Integration**: Publishes validated data to Kafka topics for downstream processing
+- **API Key Authentication**: Secure authentication with configurable API keys
+- **Health Monitoring**: Health check and info endpoints for service monitoring
+- **High Performance**: Optimized for high-throughput real-time data ingestion
 
 ## Requirements
 
 - Python 3.9+
 - Dependencies listed in `requirements.txt`
+- Access to Kafka cluster (default: localhost:9092)
+- Network connectivity for WebSocket clients
 
 ## Installation
 
-1. Install dependencies:
+### Local Development
 
+1. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. (Optional) Edit the configuration file `config.py` to adjust API settings
+2. **Configure settings (optional):**
+Edit `src/config/settings.py` to adjust API settings
+
+### Docker Setup
+
+1. **Build the image:**
+```bash
+docker build -t venus:latest .
+```
+
+2. **Run with Docker Compose (recommended):**
+```bash
+cd Infrastructure
+docker-compose up venus
+```
 
 ## Configuration
 
-Edit `config.py` to customize:
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` | Kafka bootstrap servers |
+| `KAFKA_TOPIC` | `sessions` | Kafka topic for delivery data |
+| `KAFKA_CONSUMER_GROUP` | `venus` | Kafka consumer group |
+| `MAX_CONNECTIONS` | `1000` | Maximum WebSocket connections |
+| `API_KEY` | `mars-secret-key` | API key for authentication |
+| `HOST` | `0.0.0.0` | API server host |
+| `PORT` | `8000` | API server port |
+
+### Custom Configuration
+
+Edit `src/config/settings.py` to customize:
 
 - `HOST`: API server host (default: 0.0.0.0)
 - `PORT`: API server port (default: 8000)
-- `DATA_DIR`: Directory for CSV files (default: data)
-- `CSV_FILENAME_FORMAT`: Format for CSV filenames
+- `KAFKA_BOOTSTRAP_SERVERS`: Kafka cluster addresses
+- `KAFKA_TOPIC`: Topic name for delivery data
 - `API_KEYS`: Dictionary of valid API keys with permissions
 - `CORS_ORIGINS`: CORS settings for HTTP endpoints
 
 ## Usage
 
-Start the API server with:
+### Running Locally
 
 ```bash
-python -m Venus.api
+python main.py
 ```
 
-The API server will:
-1. Start listening on the configured host and port
-2. Accept WebSocket connections at `/ws`
-3. Validate incoming data against the data model
-4. Store valid data in CSV files
-5. Provide acknowledgement responses to clients
+### Running with Docker Compose
+
+From the Infrastructure directory:
+```bash
+# Start all services
+docker-compose up -d
+
+# Start Venus API
+docker-compose up venus
+
+# Or run in detached mode
+docker-compose up -d venus
+```
+
+### Running Individual Docker Container
+
+```bash
+# Build and run
+docker build -t venus:latest .
+docker run --network packetpulse_network -p 8000:8000 venus:latest
+```
 
 ## API Endpoints
 
-- `GET /`: API information
+### HTTP Endpoints
+
+- `GET /`: API information and status
 - `GET /health`: Health check endpoint
 - `GET /info`: Information about connected devices (requires API key)
+
+### WebSocket Endpoint
+
 - `WebSocket /ws`: WebSocket endpoint for receiving packet delivery data
 
 ## Data Format
 
-Packet delivery data is stored in CSV files with the following columns:
+### Input Data (from Mars)
 
+Packet delivery data received via WebSocket:
+
+```json
+{
+  "device_id": "uuid-of-device",
+  "vehicle_id": "uuid-of-vehicle",
+  "session_id": "uuid-of-session", 
+  "order_number": "sequential-order-number",
+  "timestamp": "unix-timestamp",
+  "current_lat": 40.7527,
+  "current_lon": -73.9772,
+  "start_lat": 40.7527,
+  "start_lon": -73.9772,
+  "end_lat": 40.7580,
+  "end_lon": -73.9855,
+  "status": "en_route"
+}
 ```
-device_id,vehicle_id,session_id,order_number,timestamp,current_latitude,current_longitude,start_latitude,start_longitude,end_latitude,end_longitude,status
+
+### Output Data (to Kafka)
+
+Validated and enriched data published to Kafka:
+
+```json
+{
+  "device_id": "uuid-of-device",
+  "vehicle_id": "uuid-of-vehicle",
+  "session_id": "uuid-of-session",
+  "order_id": "sequential-order-number",
+  "status": "en_route",
+  "timestamp": "2025-01-19T12:34:56.789Z",
+  "start_lat": 40.7527,
+  "start_lon": -73.9772,
+  "end_lat": 40.7580,
+  "end_lon": -73.9855,
+  "current_lat": 40.7527,
+  "current_lon": -73.9772
+}
 ```
 
 ## Security
 
+### API Key Authentication
+
 Venus uses API key authentication with configurable permissions:
-- Default keys in config.py: "simulator123" (write access) and "reader456" (read access)
+- Default keys: "mars-secret-key" (write access)
 - Keys should be sent in HTTP header "X-API-Key" for HTTP endpoints
-- WebSocket connections don't currently enforce API key authentication 
+- WebSocket connections validate API keys for data integrity
+
+### CORS Configuration
+
+Configurable CORS settings for HTTP endpoints:
+- Default: Allow all origins for development
+- Production: Restrict to specific domains
+
+## Monitoring
+
+### Health Checks
+
+- **Service Health**: `/health` endpoint for load balancer integration
+- **Kafka Connectivity**: Automatic monitoring of Kafka connection status
+- **WebSocket Connections**: Real-time tracking of active connections
+
+### Logging
+
+Comprehensive logging including:
+- WebSocket connection events
+- Data validation results
+- Kafka publishing status
+- Error handling and recovery
+
+## Performance
+
+### Optimization Features
+
+- **Connection Pooling**: Efficient WebSocket connection management
+- **Batch Processing**: Optimized Kafka message publishing
+- **Memory Management**: Efficient data handling for high throughput
+- **Error Recovery**: Automatic reconnection and retry mechanisms
+
+### Scaling
+
+For high-throughput scenarios:
+```bash
+# Scale Venus API instances
+docker-compose up -d --scale venus=3
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Kafka Connection Failed**: Ensure Kafka cluster is running and accessible
+2. **WebSocket Connection Issues**: Check network configuration and firewall settings
+3. **Authentication Errors**: Verify API keys match between Mars and Venus
+4. **High Memory Usage**: Monitor connection count and adjust MAX_CONNECTIONS
+
+### Debug Mode
+
+Enable debug logging:
+```bash
+export LOG_LEVEL=DEBUG
+```
+
+## Integration
+
+Venus integrates with the PacketPulse platform:
+- **Input**: Real-time delivery data from Mars simulators
+- **Processing**: Data validation and enrichment
+- **Output**: Validated data to Kafka for Neptune/Jupiter processing
+- **Monitoring**: Health status for infrastructure management
+
+## Development
+
+### Project Structure
+
+```
+Venus/
+├── main.py                 # Main entry point
+├── src/
+│   ├── config/
+│   │   └── settings.py    # Configuration management
+│   ├── models/
+│   │   └── delivery.py    # Data models
+│   └── utils/
+│       └── kafka.py       # Kafka utilities
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+### Adding New Features
+
+1. **New Data Fields**: Extend the DeliveryData model
+2. **Additional Validation**: Add custom validation rules
+3. **New Endpoints**: Extend FastAPI routes
+4. **Enhanced Security**: Implement additional authentication methods 
