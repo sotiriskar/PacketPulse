@@ -1,5 +1,6 @@
 # Mercury - Full Stack Dashboard
 
+<img width="1440" height="518" alt="mercury_1440x518_transparent" src="https://github.com/user-attachments/assets/75b61c75-56cb-45ea-adc0-fd29a901b261" />
 
 ## Table of Contents
 - [Mercury - Full Stack Dashboard](#mercury---full-stack-dashboard)
