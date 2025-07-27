@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Box, Fab, Tooltip } from '@mui/material';
+import { MyLocation } from '@mui/icons-material';
 
 // Color palette based on #fe4e50
 const colorPalette = {
@@ -51,59 +53,213 @@ interface MapComponentProps {
   selectedSession: Session | null;
 }
 
-// Custom component to handle map centering
-function MapController({ selectedSession }: { selectedSession: Session | null }) {
+// Custom component to handle map centering and auto-follow
+function MapController({ 
+  selectedSession, 
+  autoCenter, 
+  onAutoCenterChange 
+}: { 
+  selectedSession: Session | null;
+  autoCenter: boolean;
+  onAutoCenterChange: (enabled: boolean) => void;
+}) {
   const map = useMap();
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+  const [lastCoords, setLastCoords] = useState<{lat: number, lng: number} | null>(null);
 
+  console.log('MapController: Component rendered with props:', { 
+    selectedSessionId: selectedSession?.session_id, 
+    autoCenter, 
+    hasMap: !!map 
+  });
+
+  // Function to center map on selected session
+  const centerMap = useCallback(() => {
+    if (!selectedSession) return;
+    
+    let targetLat: number | undefined;
+    let targetLng: number | undefined;
+    
+    // Always prioritize vehicle location (driver's actual position)
+    if (selectedSession.current_latitude && selectedSession.current_longitude) {
+      targetLat = selectedSession.current_latitude;
+      targetLng = selectedSession.current_longitude;
+    } else if (selectedSession.start_latitude && selectedSession.start_longitude) {
+      targetLat = selectedSession.start_latitude;
+      targetLng = selectedSession.start_longitude;
+    } else if (selectedSession.end_latitude && selectedSession.end_longitude) {
+      targetLat = selectedSession.end_latitude;
+      targetLng = selectedSession.end_longitude;
+    }
+    
+    if (targetLat && targetLng) {
+      map.setView([targetLat, targetLng], 16, { animate: true });
+    }
+  }, [selectedSession, map]);
+
+  // Handle session change
   useEffect(() => {
     if (selectedSession && selectedSession.session_id !== lastSessionId) {
-      console.log('MapController: Selected session changed', selectedSession.session_id);
       setLastSessionId(selectedSession.session_id);
-      
-      // Try to center immediately if map is ready
-      const centerMap = () => {
-        let targetLat: number | undefined;
-        let targetLng: number | undefined;
-        
-        // Always prioritize vehicle location (driver's actual position)
-        if (selectedSession.current_latitude && selectedSession.current_longitude) {
-          targetLat = selectedSession.current_latitude;
-          targetLng = selectedSession.current_longitude;
-          console.log('MapController: Using vehicle coordinates (driver location)', targetLat, targetLng);
-        } else if (selectedSession.start_latitude && selectedSession.start_longitude) {
-          targetLat = selectedSession.start_latitude;
-          targetLng = selectedSession.start_longitude;
-          console.log('MapController: Using pickup coordinates (fallback)', targetLat, targetLng);
-        } else if (selectedSession.end_latitude && selectedSession.end_longitude) {
-          targetLat = selectedSession.end_latitude;
-          targetLng = selectedSession.end_longitude;
-          console.log('MapController: Using delivery coordinates (fallback)', targetLat, targetLng);
-        }
-        
-        if (targetLat && targetLng) {
-          console.log('MapController: Centering map on driver location', targetLat, targetLng);
-          map.setView(
-            [targetLat, targetLng],
-            16,
-            { animate: true }
-          );
-        } else {
-          console.log('MapController: No valid coordinates found for session', selectedSession.session_id);
-        }
-      };
-
-      // Try immediately
       centerMap();
-      
-      // Also try after a delay to ensure map is fully loaded
-      const timer = setTimeout(centerMap, 500);
-      
-      return () => clearTimeout(timer);
     }
-  }, [selectedSession, map, lastSessionId]);
+  }, [selectedSession, lastSessionId, centerMap]);
+
+  // Handle auto-centering when vehicle moves
+  useEffect(() => {
+    console.log('Auto-center effect triggered:', { autoCenter, selectedSession: !!selectedSession });
+    
+    if (!autoCenter || !selectedSession) return;
+
+    const currentLat = selectedSession.current_latitude;
+    const currentLng = selectedSession.current_longitude;
+    
+    console.log('Vehicle coordinates:', { currentLat, currentLng });
+    
+    if (currentLat && currentLng) {
+      const newCoords = { lat: currentLat, lng: currentLng };
+      
+      console.log('Centering map on vehicle:', newCoords);
+      setLastCoords(newCoords);
+      centerMap();
+    }
+  }, [selectedSession?.current_latitude, selectedSession?.current_longitude, autoCenter, centerMap]);
+
+  // Continuous auto-centering when enabled
+  useEffect(() => {
+    if (!autoCenter || !selectedSession) return;
+
+    const interval = setInterval(() => {
+      const currentLat = selectedSession.current_latitude;
+      const currentLng = selectedSession.current_longitude;
+      
+      if (currentLat && currentLng) {
+        console.log('Continuous centering on vehicle:', { currentLat, currentLng });
+        map.setView([currentLat, currentLng], 16, { animate: false });
+      }
+    }, 2000); // Center every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [autoCenter, selectedSession, map]);
+
+  // Detect manual map movement and disable auto-centering
+  useEffect(() => {
+    let isAutoCentering = false;
+    let isInitialLoad = true;
+
+    // Delay adding event listeners to avoid triggering on initial map setup
+    const timer = setTimeout(() => {
+      isInitialLoad = false;
+    }, 1000); // Wait 1 second before enabling manual movement detection
+
+    const handleMapMove = () => {
+      // Don't disable auto-center if we're currently auto-centering or during initial load
+      if (isAutoCentering || isInitialLoad) {
+        console.log('MapController: Ignoring movement during auto-centering or initial load');
+        return;
+      }
+      
+      console.log('MapController: Manual map movement detected, disabling auto-center');
+      if (autoCenter) {
+        onAutoCenterChange(false);
+      }
+    };
+
+    // Set flag before auto-centering
+    const originalSetView = map.setView;
+    map.setView = function(latlng: L.LatLngExpression, zoom?: number, options?: L.ZoomPanOptions) {
+      if (autoCenter) {
+        isAutoCentering = true;
+        setTimeout(() => {
+          isAutoCentering = false;
+        }, 100); // Reset flag after 100ms
+      }
+      return originalSetView.call(this, latlng, zoom, options);
+    };
+
+    map.on('dragstart', handleMapMove);
+    map.on('zoomstart', handleMapMove);
+    map.on('movestart', handleMapMove);
+
+    return () => {
+      clearTimeout(timer);
+      map.off('dragstart', handleMapMove);
+      map.off('zoomstart', handleMapMove);
+      map.off('movestart', handleMapMove);
+      // Restore original setView
+      map.setView = originalSetView;
+    };
+  }, [map, autoCenter, onAutoCenterChange]);
 
   return null;
+}
+
+// Component for the recenter button that has access to the map
+function RecenterButton({ 
+  autoCenter, 
+  setAutoCenter, 
+  selectedSession 
+}: { 
+  autoCenter: boolean;
+  setAutoCenter: (enabled: boolean) => void;
+  selectedSession: Session | null;
+}) {
+  const map = useMap();
+
+  console.log('RecenterButton render:', { autoCenter, hasSelectedSession: !!selectedSession });
+
+  if (autoCenter || !selectedSession) {
+    console.log('RecenterButton: Not rendering because autoCenter is', autoCenter, 'or no selectedSession');
+    return null;
+  }
+  
+  console.log('RecenterButton: Rendering button');
+
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        zIndex: 1000,
+        pointerEvents: 'auto',
+        backgroundColor: 'white',
+        borderRadius: '50%',
+        padding: '4px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      }}
+    >
+      <Tooltip title="Center on vehicle" placement="left">
+        <Fab
+          size="medium"
+          color="primary"
+          onClick={() => {
+            console.log('Recenter button clicked');
+            setAutoCenter(true);
+            // Immediately center on the vehicle
+            if (selectedSession.current_latitude && selectedSession.current_longitude) {
+              console.log('Centering on vehicle:', selectedSession.current_latitude, selectedSession.current_longitude);
+              map.setView(
+                [selectedSession.current_latitude, selectedSession.current_longitude],
+                16,
+                { animate: true }
+              );
+            }
+          }}
+          sx={{
+            backgroundColor: colorPalette.primary,
+            '&:hover': {
+              backgroundColor: colorPalette.primaryDark,
+            },
+            width: 48,
+            height: 48,
+          }}
+        >
+          <MyLocation sx={{ fontSize: 24 }} />
+        </Fab>
+      </Tooltip>
+    </Box>
+  );
 }
 
 export default function MapComponent({ 
@@ -112,9 +268,13 @@ export default function MapComponent({
 }: MapComponentProps) {
   
   const [hasCentered, setHasCentered] = useState(false);
+  const [autoCenter, setAutoCenter] = useState(true);
+  const mapRef = useRef<L.Map | null>(null);
   
   console.log('MapComponent: Received sessions:', sessions.length);
   console.log('MapComponent: Selected session:', selectedSession?.session_id);
+  console.log('MapComponent: Auto-center state:', autoCenter);
+  console.log('MapComponent: Auto-center state type:', typeof autoCenter);
   if (selectedSession) {
     console.log('MapComponent: Selected session coords - Vehicle:', selectedSession.current_latitude, selectedSession.current_longitude);
     console.log('MapComponent: Selected session coords - Pickup:', selectedSession.start_latitude, selectedSession.start_longitude);
@@ -225,60 +385,120 @@ export default function MapComponent({
   }, []);
 
   return (
-    <MapContainer
-      center={centerCoordinates as [number, number]}
-      zoom={zoomLevel}
-      style={{ height: '100%', width: '100%' }}
-      zoomControl={true}
-      scrollWheelZoom={true}
-      doubleClickZoom={true}
-      boxZoom={false}
-      keyboard={false}
-      dragging={true}
-      touchZoom={true}
-      ref={(map) => {
-        // Only center on initial load when there's a selected session
-        if (map && selectedSession && !hasCentered) {
-          console.log('MapContainer ref: Initial centering for selected session', selectedSession.session_id);
-          setHasCentered(true);
-          
-          setTimeout(() => {
-            let targetLat: number | undefined;
-            let targetLng: number | undefined;
-            
-            // Always prioritize vehicle location (driver's actual position)
-            if (selectedSession.current_latitude && selectedSession.current_longitude) {
-              targetLat = selectedSession.current_latitude;
-              targetLng = selectedSession.current_longitude;
-              console.log('MapContainer ref: Using vehicle coordinates (driver location)', targetLat, targetLng);
-            } else if (selectedSession.start_latitude && selectedSession.start_longitude) {
-              targetLat = selectedSession.start_latitude;
-              targetLng = selectedSession.start_longitude;
-              console.log('MapContainer ref: Using pickup coordinates (fallback)', targetLat, targetLng);
-            } else if (selectedSession.end_latitude && selectedSession.end_longitude) {
-              targetLat = selectedSession.end_latitude;
-              targetLng = selectedSession.end_longitude;
-              console.log('MapContainer ref: Using delivery coordinates (fallback)', targetLat, targetLng);
-            }
-            
-            if (targetLat && targetLng) {
-              console.log('MapContainer ref: Centering map on driver location', targetLat, targetLng);
-              map.setView([targetLat, targetLng], 16, { animate: true });
-            }
-          }, 100);
-        }
-      }}
-    >
-      <MapController selectedSession={selectedSession} />
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        maxZoom={18}
-        minZoom={3}
-      />
-      
-      {/* Vehicle markers */}
-      {sessionCoordinates.map(({ session, coordinates }) => {
+    <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Auto-center button - OUTSIDE MapContainer */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          zIndex: 1000,
+          pointerEvents: 'auto',
+        }}
+      >
+        <Tooltip title="Auto Center" placement="left">
+          <Fab
+            size="small"
+            onClick={() => {
+              console.log('Auto-center button clicked, enabling auto-center');
+              setAutoCenter(true);
+            }}
+            sx={{
+              backgroundColor: 'white',
+              color: '#666',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                boxShadow: '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)',
+              },
+              width: 32,
+              height: 32,
+              minHeight: 32,
+              '& .MuiFab-label': {
+                fontSize: '14px',
+              },
+            }}
+          >
+            <MyLocation sx={{ fontSize: 14 }} />
+          </Fab>
+        </Tooltip>
+      </Box>
+
+            {/* Recenter button - OUTSIDE MapContainer */}
+      {!autoCenter && selectedSession && (
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 20,
+            right: 20,
+            zIndex: 1000,
+            pointerEvents: 'auto',
+          }}
+        >
+          <Tooltip title="Re-center on vehicle" placement="left">
+            <Fab
+              size="small"
+              onClick={() => {
+                console.log('Recenter button clicked');
+                setAutoCenter(true);
+                // Force immediate centering
+                if (mapRef.current && selectedSession.current_latitude && selectedSession.current_longitude) {
+                  const map = mapRef.current;
+                  map.setView(
+                    [selectedSession.current_latitude, selectedSession.current_longitude],
+                    16
+                  );
+                }
+              }}
+              sx={{
+                backgroundColor: 'white',
+                color: '#666',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  boxShadow: '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)',
+                },
+                width: 32,
+                height: 32,
+                minHeight: 32,
+                '& .MuiFab-label': {
+                  fontSize: '14px',
+                },
+              }}
+            >
+              <MyLocation sx={{ fontSize: 14 }} />
+            </Fab>
+          </Tooltip>
+        </Box>
+      )}
+
+      <MapContainer
+        center={centerCoordinates as [number, number]}
+        zoom={zoomLevel}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={true}
+        scrollWheelZoom={true}
+        doubleClickZoom={true}
+        boxZoom={false}
+        keyboard={false}
+        dragging={true}
+        touchZoom={true}
+        ref={mapRef}
+      >
+                <MapController 
+          selectedSession={selectedSession} 
+          autoCenter={autoCenter}
+          onAutoCenterChange={setAutoCenter}
+        />
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          maxZoom={18}
+          minZoom={3}
+        />
+        
+        {/* Vehicle markers */}
+        {sessionCoordinates.map(({ session, coordinates }) => {
         if (!coordinates.current.hasValidCoords) return null;
         
         return (
@@ -591,6 +811,7 @@ export default function MapComponent({
           </Marker>
         );
       })}
-    </MapContainer>
+      </MapContainer>
+    </Box>
   );
 } 

@@ -99,6 +99,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilterSession, setSelectedFilterSession] = useState<Session | null>(null);
+  const [autocompleteKey, setAutocompleteKey] = useState(0);
   const [mobileSessionDrawerOpen, setMobileSessionDrawerOpen] = useState(false);
 
   // Memoized filtered sessions
@@ -141,6 +142,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
         // Initial selection - pick first active session
         if (activeSessions.length > 0) {
           setSelectedFilterSession(activeSessions[0]);
+          setAutocompleteKey(prev => prev + 1); // Force Autocomplete re-mount
         }
       } else {
         // Check if current selected session is still active
@@ -373,6 +375,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
             
             <Box sx={{ mb: 2 }}>
                             <Autocomplete
+                key={autocompleteKey} // Force re-mount when sessions change
                 fullWidth
                 size="small"
                 options={sessions.filter(session => {
@@ -388,10 +391,10 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 getOptionLabel={(option) => 
                   `${option.session_id} - ${option.vehicle_id}`
                 }
+                value={selectedFilterSession || undefined}
                 isOptionEqualToValue={(option, value) => 
                   option.session_id === value.session_id
                 }
-                value={selectedFilterSession || undefined}
                 onChange={(event, newValue) => {
                   setSelectedFilterSession(newValue);
                   if (newValue) {
