@@ -1,5 +1,36 @@
 # Uranus - Data Transformation (dbt)
 
+## Table of Contents
+- [Uranus - Data Transformation (dbt)](#uranus---data-transformation-dbt)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [dbt Configuration](#dbt-configuration)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [Data Models](#data-models)
+    - [Gold Layer Models](#gold-layer-models)
+      - [active\_sessions](#active_sessions)
+      - [session\_summary](#session_summary)
+      - [fleet\_summary](#fleet_summary)
+      - [kpi\_aggregates](#kpi_aggregates)
+      - [users](#users)
+    - [Model Dependencies](#model-dependencies)
+  - [Data Flow](#data-flow)
+    - [Gold Layer Process](#gold-layer-process)
+  - [Integration](#integration)
+
+
+## Overview
+
 Uranus is the **gold layer** in the PacketPulse data pipeline, responsible for creating business-ready models and aggregations using dbt (data build tool). It processes data from ClickHouse to generate KPIs, session summaries, and analytical views for the Mercury dashboard.
 
 ## Features
@@ -173,143 +204,6 @@ bronze (Neptune) → silver (Jupiter) → gold (Uranus)
 4. **Quality Checks**: Runs data quality tests and validation
 5. **Documentation**: Generates model documentation and lineage
 
-### Transformation Pipeline
-
-```
-ClickHouse Tables → dbt Models → Business Views → Mercury Dashboard
-```
-
-## Development
-
-### Project Structure
-
-```
-Uranus/
-├── analyses/              # Ad-hoc analyses
-├── macros/               # Reusable SQL macros
-├── models/               # dbt models
-│   └── gold/            # Gold layer models
-│       ├── active_sessions.sql
-│       ├── fleet_summary.sql
-│       ├── kpi_aggregates.sql
-│       ├── schema.yml   # Model documentation
-│       ├── session_summary.sql
-│       └── users.sql
-├── seeds/               # Static data files
-├── snapshots/           # Type 2 SCD tracking
-├── tests/               # Custom data tests
-├── dbt_project.yml      # Project configuration
-├── profiles.yml         # Database connections
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-### Adding New Models
-
-1. **Create SQL Model**: Add new `.sql` file in `models/gold/`
-2. **Document Model**: Add model definition in `schema.yml`
-3. **Add Tests**: Implement data quality tests
-4. **Update Dependencies**: Configure model dependencies
-
-### Example Model
-
-```sql
--- models/gold/new_kpi.sql
-{{ config(materialized='table') }}
-
-SELECT 
-    session_id,
-    vehicle_id,
-    AVG(speed) as avg_speed,
-    COUNT(*) as total_events
-FROM {{ ref('session_movements') }}
-GROUP BY session_id, vehicle_id
-```
-
-## Testing
-
-### Data Quality Tests
-
-```bash
-# Run all tests
-dbt test
-
-# Run specific model tests
-dbt test --select active_sessions
-
-# Run custom tests
-dbt test --select test_type:generic
-```
-
-### Test Examples
-
-```yaml
-# schema.yml
-models:
-  - name: active_sessions
-    tests:
-      - not_null:
-          column_name: session_id
-      - unique:
-          column_name: session_id
-      - accepted_values:
-          column_name: status
-          values: ['started', 'en_route', 'completed']
-```
-
-## Documentation
-
-### Generating Documentation
-
-```bash
-# Generate documentation
-dbt docs generate
-
-# Serve documentation locally
-dbt docs serve
-```
-
-### Documentation Features
-
-- **Model Lineage**: Visual representation of data dependencies
-- **Column Descriptions**: Detailed field documentation
-- **Test Results**: Data quality test outcomes
-- **Business Context**: Model purpose and usage
-
-## Performance
-
-### Optimization Features
-
-- **Incremental Models**: Efficient processing of new data only
-- **Materialized Views**: Optimized table structures for queries
-- **Partitioning**: Strategic data partitioning for performance
-- **Indexing**: Optimized ClickHouse table indexes
-
-### Monitoring
-
-- **Model Execution**: Track model run times and success rates
-- **Data Freshness**: Monitor data update frequency
-- **Test Results**: Track data quality metrics
-- **Resource Usage**: Monitor ClickHouse performance
-
-## Troubleshooting
-
-### Common Issues
-
-1. **ClickHouse Connection Failed**: Verify database connectivity
-2. **Model Failures**: Check SQL syntax and dependencies
-3. **Test Failures**: Investigate data quality issues
-4. **Performance Issues**: Optimize model queries and materialization
-
-### Debug Mode
-
-Enable debug logging:
-```bash
-export DBT_LOG_LEVEL=debug
-dbt run --log-level debug
-```
-
 ## Integration
 
 Uranus integrates with the PacketPulse platform:
@@ -317,11 +211,3 @@ Uranus integrates with the PacketPulse platform:
 - **Processing**: Business logic and aggregation
 - **Output**: Business-ready models for Mercury dashboard
 - **Quality**: Data validation and testing
-
-## Gold Layer Principles
-
-This implementation follows gold layer best practices:
-- **Business Logic**: Implement business rules and calculations
-- **Data Quality**: Ensure data accuracy and consistency
-- **Performance**: Optimize for analytical queries
-- **Documentation**: Maintain comprehensive model documentation

@@ -1,5 +1,25 @@
 # PacketPulse - Real-Time Delivery Tracking Platform
 
+## Table of Contents
+- [PacketPulse - Real-Time Delivery Tracking Platform](#packetpulse---real-time-delivery-tracking-platform)
+  - [Table of Contents](#table-of-contents)
+  - [Architecture Overview](#architecture-overview)
+  - [Planet Components](#planet-components)
+    - [🚀 Mars - Delivery Simulator](#-mars---delivery-simulator)
+    - [🌟 Venus - WebSocket API Gateway](#-venus---websocket-api-gateway)
+    - [🌊 Neptune - Bronze Layer Processor](#-neptune---bronze-layer-processor)
+    - [⚡ Jupiter - Silver Layer Processor](#-jupiter---silver-layer-processor)
+    - [🪐 Uranus - Data Transformation (dbt)](#-uranus---data-transformation-dbt)
+    - [🌍 Mercury - Full Stack Dashboard](#-mercury---full-stack-dashboard)
+  - [Quick Start](#quick-start)
+    - [Prerequisites](#prerequisites)
+    - [Running the Complete Platform](#running-the-complete-platform)
+    - [Individual Component Setup](#individual-component-setup)
+  - [Technology Stack](#technology-stack)
+  - [Contributing](#contributing)
+  - [License](#license)
+
+
 PacketPulse is a comprehensive real-time delivery tracking platform that simulates, processes, and visualizes package delivery data through a modern data engineering architecture. The system provides end-to-end visibility into delivery operations with real-time analytics and interactive dashboards.
 
 ## Architecture Overview
@@ -81,6 +101,10 @@ Each component can be run independently. See individual README files for detaile
 - **Frontend**: Next.js, TypeScript, Material-UI
 - **Backend**: FastAPI, WebSockets
 - **Infrastructure**: Docker, Docker Compose
+
+## Contributing
+
+
 
 ## License
 

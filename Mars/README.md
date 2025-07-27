@@ -1,5 +1,31 @@
 # Mars - Delivery Simulator
 
+## Table of Contents
+- [Mars - Delivery Simulator](#mars---delivery-simulator)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [Custom Configuration](#custom-configuration)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [Data Format](#data-format)
+  - [Simulation Behavior](#simulation-behavior)
+  - [Monitoring](#monitoring)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Debug Mode](#debug-mode)
+  - [Integration](#integration)
+
+## Overview
+
 Mars is a sophisticated delivery simulation component that generates realistic packet delivery data and transmits it to the Venus API via WebSocket. It simulates multiple delivery vehicles with real-time GPS tracking, configurable routes, and status updates.
 
 ## Features
@@ -151,28 +177,3 @@ Mars integrates with the PacketPulse platform:
 - **Input**: Configuration and simulation parameters
 - **Output**: Real-time delivery data via WebSocket to Venus
 - **Downstream**: Data flows to Kafka → Neptune/Jupiter → Uranus → Mercury
-
-## Development
-
-### Project Structure
-
-```
-Mars/
-├── main.py                 # Main entry point
-├── src/
-│   ├── config/
-│   │   └── settings.py    # Configuration management
-│   ├── models/
-│   │   └── session.py     # Data models
-│   └── utils/
-│       └── data_processor.py # Simulation utilities
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-### Adding New Features
-
-1. **New Location Types**: Add to `DEFAULT_LOCATIONS` in settings
-2. **Custom Status Types**: Extend the status enum in models
-3. **Additional Metrics**: Modify the data format and Venus API accordingly 

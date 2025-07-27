@@ -1,5 +1,38 @@
 # Neptune - Bronze Layer Raw Data Ingestion
 
+## Table of Contents
+- [Neptune - Bronze Layer Raw Data Ingestion](#neptune---bronze-layer-raw-data-ingestion)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [Custom Configuration](#custom-configuration)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [Data Flow](#data-flow)
+    - [Bronze Layer Process](#bronze-layer-process)
+    - [Table Schema](#table-schema)
+  - [Bronze Layer Principles](#bronze-layer-principles)
+  - [Monitoring](#monitoring)
+    - [Health Checks](#health-checks)
+    - [Logging](#logging)
+  - [Performance](#performance)
+    - [Optimization Features](#optimization-features)
+    - [Scaling](#scaling)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Debug Mode](#debug-mode)
+  - [Integration](#integration)
+
+## Overview
+
 Neptune serves as the **bronze layer** in the PacketPulse data pipeline, responsible for consuming real-time delivery data from Kafka and storing it as-is in Iceberg tables on MinIO S3. It implements the bronze layer pattern for raw data preservation and basic validation.
 
 ## Features
@@ -198,36 +231,3 @@ Neptune integrates with the PacketPulse platform:
 - **Processing**: Raw data validation and storage
 - **Output**: Iceberg tables on MinIO S3 for downstream processing
 - **Downstream**: Data available for Jupiter (Silver) and Uranus (Gold) layers
-
-## Development
-
-### Project Structure
-
-```
-Neptune/
-├── main.py                 # Main entry point
-├── src/
-│   ├── config/
-│   │   └── settings.py    # Configuration management
-│   ├── models/
-│   │   └── delivery.py    # Data models
-│   └── utils/
-│       └── iceberg.py     # Iceberg utilities
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-### Adding New Features
-
-1. **New Data Fields**: Extend the DeliveryData model
-2. **Additional Validation**: Add custom validation rules
-3. **Enhanced Storage**: Implement additional storage backends
-4. **Monitoring**: Add custom metrics and alerts
-
-## Next Steps
-
-This bronze layer provides the foundation for:
-- **Silver Layer**: Data cleaning and transformation (Jupiter)
-- **Gold Layer**: Business logic and aggregation (Uranus)
-- **Analytics**: Real-time dashboards and reporting (Mercury) 

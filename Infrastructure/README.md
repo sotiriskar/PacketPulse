@@ -1,5 +1,61 @@
 # Infrastructure - PacketPulse Platform
 
+## Table of Contents
+- [Infrastructure - PacketPulse Platform](#infrastructure---packetpulse-platform)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Architecture Overview](#architecture-overview)
+  - [Requirements](#requirements)
+  - [Quick Start](#quick-start)
+    - [1. Start All Services](#1-start-all-services)
+    - [2. Access the Applications](#2-access-the-applications)
+    - [3. Start Simulation](#3-start-simulation)
+  - [Service Details](#service-details)
+    - [Data Infrastructure](#data-infrastructure)
+      - [Kafka \& Zookeeper](#kafka--zookeeper)
+      - [Storage Services](#storage-services)
+        - [ClickHouse](#clickhouse)
+        - [MinIO](#minio)
+        - [Apache Iceberg](#apache-iceberg)
+    - [Processing Services](#processing-services)
+      - [Venus API](#venus-api)
+      - [Neptune (Bronze Layer)](#neptune-bronze-layer)
+      - [Jupiter (Silver Layer)](#jupiter-silver-layer)
+      - [Uranus (Gold Layer)](#uranus-gold-layer)
+    - [Analytics Services](#analytics-services)
+      - [Trino](#trino)
+      - [SQLPad](#sqlpad)
+    - [Frontend Services](#frontend-services)
+      - [Mercury Dashboard](#mercury-dashboard)
+    - [Simulation Services](#simulation-services)
+      - [Mars Simulator](#mars-simulator)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+      - [Venus API](#venus-api-1)
+      - [Neptune (Bronze)](#neptune-bronze)
+      - [Jupiter (Silver)](#jupiter-silver)
+      - [Uranus (Gold)](#uranus-gold)
+      - [Mercury (Dashboard)](#mercury-dashboard-1)
+    - [Network Configuration](#network-configuration)
+  - [Data Flow](#data-flow)
+    - [Complete Pipeline](#complete-pipeline)
+    - [Data Storage Strategy](#data-storage-strategy)
+  - [Monitoring](#monitoring)
+    - [Service Health](#service-health)
+    - [Performance Monitoring](#performance-monitoring)
+  - [Scaling](#scaling)
+    - [Horizontal Scaling](#horizontal-scaling)
+    - [Resource Allocation](#resource-allocation)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Debug Commands](#debug-commands)
+    - [Reset Environment](#reset-environment)
+  - [Development](#development)
+    - [Local Development](#local-development)
+  - [License](#license)
+
+## Overview
+
 This directory contains the complete infrastructure setup for the PacketPulse delivery tracking platform using Docker Compose. It orchestrates all services including data processing, storage, analytics, and the web dashboard.
 
 ## Architecture Overview
@@ -294,37 +350,6 @@ docker-compose up -d kafka zookeeper minio iceberg-rest trino sqlpad clickhouse
 cd ../[ServiceName]
 python main.py  # or npm run dev for Mercury
 ```
-
-### Adding New Services
-
-1. **Add service definition** to `docker-compose.yml`
-2. **Configure networking** on `packetpulse_network`
-3. **Set environment variables** for service configuration
-4. **Add health checks** for reliable startup
-5. **Update documentation** with service details
-
-## Production Considerations
-
-### Security
-
-- Change default passwords and API keys
-- Use secrets management for sensitive data
-- Implement proper network segmentation
-- Enable SSL/TLS for external access
-
-### Performance
-
-- Configure appropriate resource limits
-- Optimize ClickHouse and Kafka settings
-- Implement proper monitoring and alerting
-- Use production-grade storage solutions
-
-### Backup & Recovery
-
-- Implement regular data backups
-- Test disaster recovery procedures
-- Monitor data retention policies
-- Document recovery procedures
 
 ## License
 

@@ -1,5 +1,48 @@
 # Mercury - Full Stack Dashboard
 
+
+## Table of Contents
+- [Mercury - Full Stack Dashboard](#mercury---full-stack-dashboard)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [Authentication](#authentication)
+      - [Default Admin User](#default-admin-user)
+      - [Features](#features-1)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [API Endpoints](#api-endpoints)
+    - [Authentication](#authentication-1)
+    - [Data](#data)
+    - [Health](#health)
+  - [Database Integration](#database-integration)
+    - [ClickHouse Tables](#clickhouse-tables)
+    - [Database Utilities](#database-utilities)
+  - [Security Features](#security-features)
+  - [Real-Time Features](#real-time-features)
+    - [WebSocket Integration](#websocket-integration)
+    - [Live Updates](#live-updates)
+  - [Performance](#performance)
+    - [Optimization Features](#optimization-features)
+    - [Monitoring](#monitoring)
+  - [Troubleshooting](#troubleshooting)
+    - [Debug Mode](#debug-mode)
+  - [Integration](#integration)
+  - [Development](#development)
+    - [Available Scripts](#available-scripts)
+    - [Styling](#styling)
+  - [License](#license)
+
+## Overview
+
 Mercury is a modern, real-time delivery tracking dashboard built with Next.js, TypeScript, and Material-UI. It provides comprehensive delivery tracking visualization, fleet management capabilities, and interactive analytics for the PacketPulse platform.
 
 ## Features
@@ -140,41 +183,6 @@ docker run --network packetpulse_network -p 3000:3000 mercury:latest
 ### Health
 - `GET /api/health` - Health check endpoint
 
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   │   ├── auth/          # Authentication endpoints
-│   │   ├── analytics/     # Analytics endpoints
-│   │   ├── charts/        # Chart data endpoints
-│   │   ├── health/        # Health check endpoint
-│   │   ├── sessions/      # Session data endpoints
-│   │   └── trends/        # Trend data endpoints
-│   ├── auth/              # Authentication page
-│   ├── dashboard/         # Main dashboard page
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page (auth redirect)
-├── components/            # React components
-│   ├── Analytics.tsx      # Analytics dashboard
-│   ├── LiveMap.tsx        # Real-time map
-│   ├── Login.tsx          # Login form
-│   ├── MapComponent.tsx   # Map utilities
-│   ├── Overview.tsx       # Dashboard overview
-│   ├── Settings.tsx       # Settings panel
-│   ├── Sidebar.tsx        # Navigation sidebar
-│   └── Signup.tsx         # Signup form
-├── contexts/              # React contexts
-│   └── AuthContext.tsx    # Authentication context
-├── middleware.ts          # Next.js middleware
-└── utils/                 # Utility functions
-    ├── api.ts             # API service
-    ├── database.ts        # Database utilities
-    └── useWebSocket.ts    # WebSocket hook
-```
-
 ## Database Integration
 
 ### ClickHouse Tables
@@ -254,13 +262,6 @@ export function useWebSocket(url: string) {
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Authentication Errors**: Verify JWT_SECRET and database connectivity
-2. **ClickHouse Connection Failed**: Ensure ClickHouse server is running
-3. **WebSocket Connection Issues**: Check WebSocket service availability
-4. **Build Failures**: Verify Node.js version and dependencies
-
 ### Debug Mode
 
 Enable debug logging:
@@ -288,13 +289,6 @@ Mercury integrates with the PacketPulse platform:
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 
-### Adding New Features
-
-1. **New Pages**: Add routes in `app/` directory
-2. **New Components**: Create React components in `components/`
-3. **New API Endpoints**: Add API routes in `app/api/`
-4. **Database Queries**: Extend utilities in `utils/database.ts`
-
 ### Styling
 
 The project uses:
@@ -302,14 +296,6 @@ The project uses:
 - **CSS Modules**: Component-specific styling
 - **Global CSS**: App-wide styles in `globals.css`
 - **Responsive Design**: Mobile-first approach
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## License
 

@@ -1,5 +1,44 @@
 # Venus - WebSocket API Gateway
 
+## Table of Contents
+- [Venus - WebSocket API Gateway](#venus---websocket-api-gateway)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [Custom Configuration](#custom-configuration)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [API Endpoints](#api-endpoints)
+    - [HTTP Endpoints](#http-endpoints)
+    - [WebSocket Endpoint](#websocket-endpoint)
+  - [Data Format](#data-format)
+    - [Input Data (from Mars)](#input-data-from-mars)
+    - [Output Data (to Kafka)](#output-data-to-kafka)
+  - [Security](#security)
+    - [API Key Authentication](#api-key-authentication)
+    - [CORS Configuration](#cors-configuration)
+  - [Monitoring](#monitoring)
+    - [Health Checks](#health-checks)
+    - [Logging](#logging)
+  - [Performance](#performance)
+    - [Optimization Features](#optimization-features)
+    - [Scaling](#scaling)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Debug Mode](#debug-mode)
+  - [Integration](#integration)
+
+
+## Overview
+
 Venus is a FastAPI-based WebSocket server that receives delivery data from Mars simulators, validates incoming data, and publishes it to Kafka for downstream processing. It serves as the real-time data ingestion gateway for the PacketPulse platform.
 
 ## Features
@@ -225,29 +264,3 @@ Venus integrates with the PacketPulse platform:
 - **Processing**: Data validation and enrichment
 - **Output**: Validated data to Kafka for Neptune/Jupiter processing
 - **Monitoring**: Health status for infrastructure management
-
-## Development
-
-### Project Structure
-
-```
-Venus/
-├── main.py                 # Main entry point
-├── src/
-│   ├── config/
-│   │   └── settings.py    # Configuration management
-│   ├── models/
-│   │   └── delivery.py    # Data models
-│   └── utils/
-│       └── kafka.py       # Kafka utilities
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-### Adding New Features
-
-1. **New Data Fields**: Extend the DeliveryData model
-2. **Additional Validation**: Add custom validation rules
-3. **New Endpoints**: Extend FastAPI routes
-4. **Enhanced Security**: Implement additional authentication methods 

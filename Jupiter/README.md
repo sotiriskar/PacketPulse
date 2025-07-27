@@ -1,5 +1,46 @@
 # Jupiter - Silver Layer Stream Processor
 
+## Table of Contents
+- [Jupiter - Silver Layer Stream Processor](#jupiter---silver-layer-stream-processor)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+    - [Local Development](#local-development)
+    - [Docker Setup](#docker-setup)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+    - [Custom Configuration](#custom-configuration)
+  - [Usage](#usage)
+    - [Running Locally](#running-locally)
+    - [Running with Docker Compose](#running-with-docker-compose)
+    - [Running Individual Docker Container](#running-individual-docker-container)
+  - [Data Flow](#data-flow)
+    - [Silver Layer Process](#silver-layer-process)
+    - [Table Schemas](#table-schemas)
+      - [sessions\_base](#sessions_base)
+      - [session\_events](#session_events)
+      - [session\_movements](#session_movements)
+  - [Data Models](#data-models)
+    - [Input Data (from Kafka)](#input-data-from-kafka)
+  - [Architecture](#architecture)
+    - [Service Components](#service-components)
+    - [Processing Pipeline](#processing-pipeline)
+  - [Performance](#performance)
+    - [Optimization Features](#optimization-features)
+    - [Scaling](#scaling)
+  - [Monitoring](#monitoring)
+    - [Health Checks](#health-checks)
+    - [Logging](#logging)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Debug Mode](#debug-mode)
+  - [Integration](#integration)
+  - [Silver Layer Principles](#silver-layer-principles)
+
+## Overview
+
 Jupiter is a real-time stream processing service that transforms delivery data from Kafka and stores it in ClickHouse. It serves as the **silver layer** in the PacketPulse data pipeline, handling data cleaning, enrichment, and structured storage for analytics.
 
 ## Features
@@ -254,34 +295,6 @@ Jupiter integrates with the PacketPulse platform:
 - **Processing**: Data cleaning, enrichment, and transformation
 - **Output**: Structured data in ClickHouse for analytics
 - **Downstream**: Data available for Uranus (Gold) layer and Mercury dashboard
-
-## Development
-
-### Project Structure
-
-```
-Jupiter/
-├── main.py                 # Main entry point with JupiterService class
-├── src/
-│   ├── config/
-│   │   └── settings.py    # Configuration management
-│   ├── models/
-│   │   └── session.py     # Data models for session data
-│   └── utils/
-│       ├── clickhouse.py  # ClickHouse connection and table management
-│       ├── data_processor.py # Data transformation utilities
-│       └── sink.py        # Flink MapFunction for ClickHouse sink
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-### Adding New Features
-
-1. **New Data Fields**: Extend the SessionData model
-2. **Additional Tables**: Create new ClickHouse table schemas
-3. **Enhanced Processing**: Add custom Flink transformations
-4. **Monitoring**: Implement custom metrics and alerts
 
 ## Silver Layer Principles
 
