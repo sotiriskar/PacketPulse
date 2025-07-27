@@ -1,5 +1,7 @@
 # Neptune - Bronze Layer Raw Data Ingestion
 
+<img width="1440" height="518" alt="neptune_1440x518_transparent" src="https://github.com/user-attachments/assets/4ddf4d59-d2f9-4962-9d67-c567d4e9ff95" />
+
 ## Table of Contents
 - [Neptune - Bronze Layer Raw Data Ingestion](#neptune---bronze-layer-raw-data-ingestion)
   - [Table of Contents](#table-of-contents)
