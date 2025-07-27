@@ -1,4 +1,4 @@
-# 🛵 Packetpulse - Real Time Delivery Tracking
+# Packetpulse - Real Time Delivery Tracking
 
 <img width="1440" height="518" src="https://github.com/user-attachments/assets/ae492a48-e685-4f92-9642-120a7719a2db" />
 
