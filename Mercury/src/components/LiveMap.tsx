@@ -59,7 +59,7 @@ const MapComponent = dynamic(() => import('./MapComponent').then(mod => ({ defau
   ssr: false,
   loading: () => (
     <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-      <CircularProgress />
+      <CircularProgress sx={{ color: '#fe4e50' }} />
     </Box>
   )
 });
@@ -200,7 +200,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#fe4e50' }} />
       </Box>
     );
   }

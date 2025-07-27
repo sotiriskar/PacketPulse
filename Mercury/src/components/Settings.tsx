@@ -291,8 +291,8 @@ export default function Settings({ loading = false, error = null }: SettingsProp
                       variant="contained"
                       size="small"
                       onClick={handleProfileSave}
-                      disabled={loadingStates.profile}
-                      startIcon={loadingStates.profile ? <CircularProgress size={16} /> : <Save />}
+                                    disabled={loadingStates.profile}
+              startIcon={loadingStates.profile ? <CircularProgress size={16} sx={{ color: '#fe4e50' }} /> : <Save />}
                       sx={{
                         borderRadius: 2,
                         textTransform: 'none',
@@ -416,8 +416,8 @@ export default function Settings({ loading = false, error = null }: SettingsProp
                       variant="contained"
                       size="small"
                       onClick={handlePasswordChange}
-                      disabled={loadingStates.password}
-                      startIcon={loadingStates.password ? <CircularProgress size={16} /> : <Save />}
+                                    disabled={loadingStates.password}
+              startIcon={loadingStates.password ? <CircularProgress size={16} sx={{ color: '#fe4e50' }} /> : <Save />}
                       sx={{
                         borderRadius: 2,
                         textTransform: 'none',
@@ -679,8 +679,8 @@ export default function Settings({ loading = false, error = null }: SettingsProp
             onClick={handleAccountDelete}
             color="error"
             variant="contained"
-            disabled={deleteConfirmText !== 'DELETE' || loadingStates.delete}
-            startIcon={loadingStates.delete ? <CircularProgress size={16} /> : <Delete />}
+                          disabled={deleteConfirmText !== 'DELETE' || loadingStates.delete}
+              startIcon={loadingStates.delete ? <CircularProgress size={16} sx={{ color: '#fe4e50' }} /> : <Delete />}
             sx={{
               borderRadius: 2,
               textTransform: 'none',

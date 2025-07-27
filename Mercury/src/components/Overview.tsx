@@ -342,7 +342,7 @@ export default function Overview({
   if (loading) {
     return (
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        <LinearProgress />
+        <LinearProgress sx={{ color: '#fe4e50' }} />
       </Box>
     );
   }

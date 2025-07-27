@@ -293,7 +293,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#fe4e50' }} />
       </Box>
     );
   }
@@ -414,7 +414,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
               justifyContent: 'center' 
             }}>
               {analyticsLoading ? (
-                <CircularProgress size={40} />
+                <CircularProgress size={40} sx={{ color: '#fe4e50' }} />
               ) : (
                 <Typography 
                   variant="h3" 
@@ -469,7 +469,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
               justifyContent: 'center' 
             }}>
               {analyticsLoading ? (
-                <CircularProgress size={40} />
+                <CircularProgress size={40} sx={{ color: '#fe4e50' }} />
               ) : (
                 <Typography 
                   variant="h4" 
@@ -524,7 +524,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
               justifyContent: 'center' 
             }}>
               {analyticsLoading ? (
-                <CircularProgress size={40} />
+                <CircularProgress size={40} sx={{ color: '#fe4e50' }} />
               ) : (
                 <Typography 
                   variant="h3" 
@@ -579,7 +579,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
               justifyContent: 'center' 
             }}>
               {analyticsLoading ? (
-                <CircularProgress size={40} />
+                <CircularProgress size={40} sx={{ color: '#fe4e50' }} />
               ) : (
                 <Typography 
                   variant="h3" 
@@ -615,7 +615,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
           </Typography>
           {analyticsLoading ? (
             <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: '#fe4e50' }} />
             </Box>
           ) : (
             <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
@@ -648,7 +648,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
             </Typography>
             {analyticsLoading ? (
               <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
-                <CircularProgress />
+                <CircularProgress sx={{ color: '#fe4e50' }} />
               </Box>
             ) : (
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
@@ -674,7 +674,7 @@ export default function Analytics({ loading, error }: AnalyticsProps) {
             </Typography>
             {analyticsLoading ? (
               <Box display="flex" justifyContent="center" alignItems="center" height={isMobile ? 250 : 300}>
-                <CircularProgress />
+                <CircularProgress sx={{ color: '#fe4e50' }} />
               </Box>
             ) : (
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>

@@ -4,7 +4,7 @@ const CLICKHOUSE_URL = process.env.CLICKHOUSE_HOST || 'http://localhost:8123';
 
 export async function GET() {
   try {
-    // Get weekly distance data
+    // Get weekly distance data - current week (Monday to Sunday)
     const weeklyDistanceQuery = `
       SELECT
         toDayOfWeek(ss.end_time) as day_of_week,
@@ -18,7 +18,7 @@ export async function GET() {
       FORMAT TSVWithNames
     `;
 
-    // Get weekly sessions data (active vs completed) with all days
+    // Get weekly sessions data (active vs completed) - current week (Monday to Sunday)
     const weeklySessionsQuery = `
       WITH latest_movements AS (
         SELECT
@@ -99,26 +99,33 @@ export async function GET() {
     const distanceRows = parseClickHouseResponse(distanceData);
     const sessionRows = parseClickHouseResponse(sessionsData);
 
-    // Transform to chart format
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Transform to chart format - Monday to Sunday
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
     const distanceDataFormatted = dayNames.map(day => {
-      const row = distanceRows.find(r => r.day_of_week === dayNames.indexOf(day).toString());
+      // ClickHouse toDayOfWeek returns 1=Monday, 2=Tuesday, etc.
+      const dayIndex = dayNames.indexOf(day) + 1;
+      const row = distanceRows.find(r => r.day_of_week === dayIndex.toString());
       return {
         day,
         distance: row ? parseInt(row.total_distance) || 0 : 0
       };
     });
 
-    // Map dates to day names for the chart
-    const sessionDataFormatted = sessionRows.map(row => {
-      const date = new Date(row.day);
-      const dayIndex = date.getDay();
-      const dayName = dayNames[dayIndex];
+    // Map dates to day names for the chart - ensure Monday to Sunday order
+    const sessionDataFormatted = dayNames.map(dayName => {
+      const dayIndex = dayNames.indexOf(dayName);
+      const row = sessionRows.find(row => {
+        const date = new Date(row.day);
+        // Convert JavaScript day (0=Sunday) to Monday-first index
+        const jsDay = date.getDay();
+        const mondayFirstIndex = jsDay === 0 ? 6 : jsDay - 1; // Sunday becomes 6, Monday becomes 0
+        return mondayFirstIndex === dayIndex;
+      });
       return {
         day: dayName,
-        active: parseInt(row.active_sessions) || 0,
-        completed: parseInt(row.completed_sessions) || 0
+        active: row ? parseInt(row.active_sessions) || 0 : 0,
+        completed: row ? parseInt(row.completed_sessions) || 0 : 0
       };
     });
 
