@@ -1,5 +1,7 @@
 # Mars - Delivery Simulator
 
+<img width="1440" height="518" alt="mars_1440x518_transparent" src="https://github.com/user-attachments/assets/2e165e64-f400-4c53-a8d0-966b53dd3807" />
+
 ## Table of Contents
 - [Mars - Delivery Simulator](#mars---delivery-simulator)
   - [Table of Contents](#table-of-contents)
