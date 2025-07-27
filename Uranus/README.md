@@ -1,5 +1,7 @@
 # Uranus - Data Transformation (dbt)
 
+<img width="1440" height="518" alt="uranus_1440x518_transparent" src="https://github.com/user-attachments/assets/6b89de23-b861-4d73-9209-b3c04d964d74" />
+
 ## Table of Contents
 - [Uranus - Data Transformation (dbt)](#uranus---data-transformation-dbt)
   - [Table of Contents](#table-of-contents)
