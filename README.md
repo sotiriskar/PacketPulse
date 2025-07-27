@@ -1,9 +1,9 @@
-# Packetpulse - Real Time Delivery Tracking Platform
+# Packetpulse - Real Time Delivery Tracking
 
 <img width="1440" height="518" src="https://github.com/user-attachments/assets/ae492a48-e685-4f92-9642-120a7719a2db" />
 
 ## Table of Contents
-- [Packetpulse - Real Time Delivery Tracking Platform](#packetpulse---real-time-delivery-tracking-platform)
+- [Packetpulse - Real Time Delivery Tracking](#packetpulse---real-time-delivery-tracking)
   - [Table of Contents](#table-of-contents)
   - [Architecture Overview](#architecture-overview)
   - [Planet Components](#planet-components)
