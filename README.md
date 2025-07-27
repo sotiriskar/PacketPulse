@@ -142,4 +142,4 @@ We welcome contributions to PacketPulse! Here's how you can help:
 - Open an issue for bugs or feature requests
 - Ask questions in GitHub Discussions
 
-By contributing, you agree that your contributions will be licensed under the MIT License. 
+By contributing, you agree that your contributions will be licensed under the MIT License.
