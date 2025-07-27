@@ -1,5 +1,7 @@
 # Venus - WebSocket API Gateway
 
+<img width="1440" height="518" alt="venus_1440x518_transparent" src="https://github.com/user-attachments/assets/7b5263a0-342d-4271-973d-12f932830765" />
+
 ## Table of Contents
 - [Venus - WebSocket API Gateway](#venus---websocket-api-gateway)
   - [Table of Contents](#table-of-contents)
