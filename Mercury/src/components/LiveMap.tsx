@@ -123,12 +123,44 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
     return filtered;
   }, [sessions, searchTerm, selectedFilterSession]);
 
-  // Auto-select the latest session only on initial load
+  // Auto-select the latest session and keep it updated with fresh data
   useEffect(() => {
-    if (sessions.length > 0 && !selectedFilterSession) {
-      setSelectedFilterSession(sessions[0]);
+    if (sessions.length > 0) {
+      const activeSessions = sessions.filter(session => {
+        // Check both status fields and other completion indicators
+        const isCompleted = 
+          session.order_status === 'completed' || 
+          session.status === 'completed' ||
+          (session.eta === '00:00:00' || session.eta === '00:00:01' || session.eta === '00:00:02') ||
+          (session.distance_to_destination_km !== undefined && session.distance_to_destination_km <= 0.1);
+        
+        return !isCompleted;
+      });
+      
+      if (!selectedFilterSession) {
+        // Initial selection - pick first active session
+        if (activeSessions.length > 0) {
+          setSelectedFilterSession(activeSessions[0]);
+        }
+      } else {
+        // Check if current selected session is still active
+        const currentSession = activeSessions.find(session => session.session_id === selectedFilterSession.session_id);
+        
+        if (currentSession) {
+          // Update the selected session with fresh data
+          setSelectedFilterSession(currentSession);
+        } else {
+          // Current session is completed, switch to another active session
+          if (activeSessions.length > 0) {
+            setSelectedFilterSession(activeSessions[0]);
+          } else {
+            // No active sessions left
+            setSelectedFilterSession(null);
+          }
+        }
+      }
     }
-  }, [sessions, selectedFilterSession]);
+  }, [sessions]);
 
   const handleSessionClick = useCallback((session: Session) => {
     setSelectedSession(session);
@@ -232,7 +264,16 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               }}
             >
               <MapComponent
-                sessions={sessions}
+                sessions={sessions.filter(session => {
+                  // Check both status fields and other completion indicators
+                  const isCompleted = 
+                    session.order_status === 'completed' || 
+                    session.status === 'completed' ||
+                    (session.eta === '00:00:00' || session.eta === '00:00:01' || session.eta === '00:00:02') ||
+                    (session.distance_to_destination_km !== undefined && session.distance_to_destination_km <= 0.1);
+                  
+                  return !isCompleted;
+                })}
                 selectedSession={selectedFilterSession}
               />
               
@@ -331,14 +372,26 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
             </Typography>
             
             <Box sx={{ mb: 2 }}>
-              <Autocomplete
+                            <Autocomplete
                 fullWidth
                 size="small"
-                options={sessions}
+                options={sessions.filter(session => {
+                  // Check both status fields and other completion indicators
+                  const isCompleted = 
+                    session.order_status === 'completed' || 
+                    session.status === 'completed' ||
+                    (session.eta === '00:00:00' || session.eta === '00:00:01' || session.eta === '00:00:02') ||
+                    (session.distance_to_destination_km !== undefined && session.distance_to_destination_km <= 0.1);
+                  
+                  return !isCompleted;
+                })}
                 getOptionLabel={(option) => 
                   `${option.session_id} - ${option.vehicle_id}`
                 }
-                value={selectedFilterSession}
+                isOptionEqualToValue={(option, value) => 
+                  option.session_id === value.session_id
+                }
+                value={selectedFilterSession || undefined}
                 onChange={(event, newValue) => {
                   setSelectedFilterSession(newValue);
                   if (newValue) {
@@ -347,9 +400,6 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 }}
                 onInputChange={(event, newInputValue) => {
                   setSearchTerm(newInputValue);
-                  if (!newInputValue) {
-                    setSelectedFilterSession(null);
-                  }
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -379,9 +429,8 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                     </Box>
                   </Box>
                 )}
-                clearOnBlur={false}
-                clearOnEscape
-                selectOnFocus
+                                  disableClearable
+                  selectOnFocus
               />
             </Box>
             
@@ -403,7 +452,121 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 backgroundColor: '#a8a8a8',
               },
             }}>
-              {filteredSessions.length === 0 ? (
+              {selectedFilterSession ? (
+                      <Card
+                        sx={{
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
+                    backgroundColor: 'rgba(254, 78, 80, 0.08)',
+                    border: `2px solid ${colorPalette.primary}`,
+                          '&:hover': {
+                      backgroundColor: 'rgba(254, 78, 80, 0.12)',
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          }
+                        }}
+                  onClick={() => handleSessionClick(selectedFilterSession)}
+                      >
+                        <CardContent sx={{ 
+                    py: 2, 
+                    px: 3,
+                    '&:last-child': { pb: 2 }
+                  }}>
+                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                         <Typography variant="h6" sx={{ 
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                           fontSize: '1rem'
+                              }}>
+                           {selectedFilterSession.session_id}
+                              </Typography>
+                         <Typography variant="body2" color="text.secondary" sx={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'block',
+                           fontSize: '0.875rem'
+                              }}>
+                           {selectedFilterSession.vehicle_id}
+                              </Typography>
+                            </Box>
+                            <Chip
+                        label={selectedFilterSession.order_status === 'en_route' ? 'En Route' : 'Started'}
+                        icon={getStatusIcon(selectedFilterSession.order_status || 'started')}
+                              sx={{
+                          backgroundColor: getStatusColor(selectedFilterSession.order_status || 'started'),
+                                color: 'white',
+                                fontWeight: 500,
+                          fontSize: '0.875rem',
+                          height: 28,
+                                '& .MuiChip-label': {
+                            px: 1.5,
+                                }
+                              }}
+                              size="small"
+                            />
+                          </Box>
+                    
+                    <Box sx={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: 2,
+                      mb: 2
+                    }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          Distance
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {selectedFilterSession.distance_to_destination_km ? `${selectedFilterSession.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          Speed
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {selectedFilterSession.avg_speed_kmh ? `${selectedFilterSession.avg_speed_kmh.toFixed(1)} km/h` : 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          ETA
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {selectedFilterSession.eta || 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          Elapsed
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {selectedFilterSession.elapsed_time || 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      pt: 1,
+                      borderTop: '1px solid #e0e0e0'
+                    }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Order: {selectedFilterSession.order_id}
+                            </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Click for details
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+              ) : (
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'center', 
@@ -412,94 +575,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                   color: 'text.secondary',
                   py: 4
                 }}>
-                  <Typography variant="body2">No sessions found</Typography>
-                </Box>
-              ) : (
-                <Box>
-                  {filteredSessions.slice(0, 5).map((session, index) => {
-                    const key = session.session_id || `session-${index}`;
-                    return (
-                      <Card
-                        key={key}
-                        sx={{
-                          mb: 1,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease-in-out',
-                          '&:hover': {
-                            backgroundColor: '#f5f5f5',
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          },
-                          '&:last-child': {
-                            mb: 0
-                          }
-                        }}
-                        onClick={() => handleSessionClick(session)}
-                      >
-                        <CardContent sx={{ 
-                          py: 1.5, 
-                          px: 2,
-                          '&:last-child': { pb: 1.5 }
-                        }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography variant="subtitle2" sx={{ 
-                                fontWeight: 600,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                fontSize: '0.875rem'
-                              }}>
-                                {session.vehicle_id}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" sx={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                display: 'block',
-                                fontSize: '0.75rem'
-                              }}>
-                                {session.session_id}
-                              </Typography>
-                            </Box>
-                            <Chip
-                              label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
-                              sx={{
-                                backgroundColor: getStatusColor(session.order_status || 'started'),
-                                color: 'white',
-                                fontWeight: 500,
-                                fontSize: '0.75rem',
-                                height: 24,
-                                '& .MuiChip-label': {
-                                  px: 1,
-                                }
-                              }}
-                              size="small"
-                            />
-                          </Box>
-                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                              {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                              ETA: {session.eta || 'N/A'}
-                            </Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {filteredSessions.length > 5 && (
-                    <Box sx={{ 
-                      textAlign: 'center', 
-                      py: 2,
-                      color: 'text.secondary'
-                    }}>
-                      <Typography variant="caption">
-                        Showing 5 of {filteredSessions.length} sessions
-                      </Typography>
-                    </Box>
-                  )}
+                  <Typography variant="body2">No session selected</Typography>
                 </Box>
               )}
             </Box>
@@ -592,64 +668,65 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 </Box>
               ) : (
                 <>
-                  <List>
+                <List>
                     {filteredSessions.slice(0, 5).map((session, index) => {
-                      const key = session.session_id || `session-${index}`;
-                      return (
-                        <ListItem key={key} disablePadding sx={{ mb: 1 }}>
-                          <ListItemButton
-                            onClick={() => handleSessionClick(session)}
-                            sx={{
-                              borderRadius: 1,
-                              border: '1px solid #e0e0e0',
-                              '&:hover': {
-                                backgroundColor: '#f5f5f5',
-                              },
-                            }}
-                          >
-                            <ListItemText
-                              primary={
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                    {session.vehicle_id}
+                    const key = session.session_id || `session-${index}`;
+                    return (
+                      <ListItem key={key} disablePadding sx={{ mb: 1 }}>
+                        <ListItemButton
+                          onClick={() => handleSessionClick(session)}
+                          sx={{
+                            borderRadius: 1,
+                            border: selectedFilterSession?.session_id === session.session_id ? `2px solid ${colorPalette.primary}` : '1px solid #e0e0e0',
+                            backgroundColor: selectedFilterSession?.session_id === session.session_id ? 'rgba(254, 78, 80, 0.08)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: selectedFilterSession?.session_id === session.session_id ? 'rgba(254, 78, 80, 0.12)' : '#f5f5f5',
+                            },
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                  {session.vehicle_id}
+                                </Typography>
+                                <Chip
+                                  label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
+                                  sx={{
+                                    backgroundColor: getStatusColor(session.order_status || 'started'),
+                                    color: 'white',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    height: 20,
+                                    '& .MuiChip-label': {
+                                      px: 0.5,
+                                    }
+                                  }}
+                                  size="small"
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                  {session.session_id}
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
                                   </Typography>
-                                  <Chip
-                                    label={session.order_status === 'en_route' ? 'En Route' : 'Started'}
-                                    sx={{
-                                      backgroundColor: getStatusColor(session.order_status || 'started'),
-                                      color: 'white',
-                                      fontWeight: 500,
-                                      fontSize: '0.75rem',
-                                      height: 20,
-                                      '& .MuiChip-label': {
-                                        px: 0.5,
-                                      }
-                                    }}
-                                    size="small"
-                                  />
-                                </Box>
-                              }
-                              secondary={
-                                <Box>
-                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                    {session.session_id}
+                                  <Typography variant="caption" color="text.secondary">
+                                    ETA: {session.eta || 'N/A'}
                                   </Typography>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {session.distance_to_destination_km ? `${session.distance_to_destination_km.toFixed(1)} km` : 'N/A'}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      ETA: {session.eta || 'N/A'}
-                                    </Typography>
-                                  </Box>
                                 </Box>
-                              }
-                            />
-                          </ListItemButton>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
+                              </Box>
+                            }
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
+                </List>
                   {filteredSessions.length > 5 && (
                     <Box sx={{ 
                       textAlign: 'center', 
@@ -721,17 +798,18 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Status</Typography>
+                  <Box sx={{ mt: 0.5 }}>
                   <Chip
                     label={selectedSession.order_status === 'en_route' ? 'En Route' : 'Started'}
                     icon={getStatusIcon(selectedSession.order_status || 'started')}
                     sx={{
                       backgroundColor: getStatusColor(selectedSession.order_status || 'started'),
                       color: 'white',
-                      fontWeight: 500,
-                      mt: 0.5
+                        fontWeight: 500
                     }}
                     size="small"
                   />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">Distance</Typography>
@@ -766,17 +844,10 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
               </Box>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button 
-                onClick={() => setSelectedSession(null)}
-                variant="outlined"
-                sx={{ borderRadius: 2 }}
-              >
-                Close
-              </Button>
             </DialogActions>
           </>
         )}
       </Dialog>
     </Box>
   );
-} 
+}
