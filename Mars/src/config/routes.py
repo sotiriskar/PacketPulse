@@ -2403,16 +2403,16 @@ ROUTE_10_WAYPOINTS: List[Tuple[float, float]] = [
 
 # Professional route mapping system
 ROUTE_MAPPING = {
-    ROUTE_1_WAYPOINTS: "Route 1",
-    ROUTE_2_WAYPOINTS: "Route 2", 
-    ROUTE_3_WAYPOINTS: "Route 3",
-    ROUTE_4_WAYPOINTS: "Route 4",
-    ROUTE_5_WAYPOINTS: "Route 5",
-    ROUTE_6_WAYPOINTS: "Route 6",
-    ROUTE_7_WAYPOINTS: "Route 7",
-    ROUTE_8_WAYPOINTS: "Route 8",
-    ROUTE_9_WAYPOINTS: "Route 9",
-    ROUTE_10_WAYPOINTS: "Route 10"
+    tuple(ROUTE_1_WAYPOINTS): "Route 1",
+    tuple(ROUTE_2_WAYPOINTS): "Route 2", 
+    tuple(ROUTE_3_WAYPOINTS): "Route 3",
+    tuple(ROUTE_4_WAYPOINTS): "Route 4",
+    tuple(ROUTE_5_WAYPOINTS): "Route 5",
+    tuple(ROUTE_6_WAYPOINTS): "Route 6",
+    tuple(ROUTE_7_WAYPOINTS): "Route 7",
+    tuple(ROUTE_8_WAYPOINTS): "Route 8",
+    tuple(ROUTE_9_WAYPOINTS): "Route 9",
+    tuple(ROUTE_10_WAYPOINTS): "Route 10"
 }
 
 # List of all available routes for random selection
@@ -2420,7 +2420,7 @@ AVAILABLE_ROUTES = list(ROUTE_MAPPING.keys())
 
 def get_route_name(waypoints: List[Tuple[float, float]]) -> str:
     """Get the name of a route based on its waypoints"""
-    return ROUTE_MAPPING.get(waypoints, "Custom Route")
+    return ROUTE_MAPPING.get(tuple(waypoints), "Custom Route")
 
 def get_route_info() -> List[Tuple[str, int]]:
     """Get information about all available routes"""
@@ -2428,5 +2428,5 @@ def get_route_info() -> List[Tuple[str, int]]:
 
 def add_route(waypoints: List[Tuple[float, float]], route_name: str) -> None:
     """Add a new route to the system"""
-    ROUTE_MAPPING[waypoints] = route_name
-    AVAILABLE_ROUTES.append(waypoints)
+    ROUTE_MAPPING[tuple(waypoints)] = route_name
+    AVAILABLE_ROUTES.append(tuple(waypoints))

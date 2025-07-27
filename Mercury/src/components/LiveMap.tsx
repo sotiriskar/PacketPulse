@@ -98,7 +98,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
   
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilterSession, setSelectedFilterSession] = useState<Session | null>(null);
+  const [selectedFilterSession, setSelectedFilterSession] = useState<Session | undefined>(undefined);
   const [autocompleteKey, setAutocompleteKey] = useState(0);
   const [mobileSessionDrawerOpen, setMobileSessionDrawerOpen] = useState(false);
 
@@ -157,7 +157,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
             setSelectedFilterSession(activeSessions[0]);
           } else {
             // No active sessions left
-            setSelectedFilterSession(null);
+            setSelectedFilterSession(undefined);
           }
         }
       }
@@ -276,7 +276,7 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                   
                   return !isCompleted;
                 })}
-                selectedSession={selectedFilterSession}
+                selectedSession={selectedFilterSession || null}
               />
               
               {/* Map legend */}
@@ -391,10 +391,11 @@ export default function LiveMap({ sessions, loading, error, onSessionClick }: Li
                 getOptionLabel={(option) => 
                   `${option.session_id} - ${option.vehicle_id}`
                 }
-                value={selectedFilterSession || undefined}
+                value={selectedFilterSession}
                 isOptionEqualToValue={(option, value) => 
                   option.session_id === value.session_id
                 }
+                noOptionsText="No sessions found"
                 onChange={(event, newValue) => {
                   setSelectedFilterSession(newValue);
                   if (newValue) {
