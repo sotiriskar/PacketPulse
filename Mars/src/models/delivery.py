@@ -1,17 +1,12 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass, field
-import enum, math, time, datetime, uuid
+import enum, math, time, datetime, uuid, random
+from src.config.routes import AVAILABLE_ROUTES, get_route_name
 
-# -------- default Athens route (override per delivery if you want) ----------
-DEFAULT_WAYPOINTS: List[Tuple[float, float]] = [
-    (37.968374406388705, 23.731513949419654),
-    (37.968222593295074, 23.731289166350056),
-    (37.96810098071369,  23.73109428590979),
-    (37.96800071594643,  23.7310709926599),
-    (37.96789868047004,  23.73088079653709),
-    (37.9444742712265,   23.70076769379892)
-]
+def get_random_route() -> List[Tuple[float, float]]:
+    """Randomly select one of the available routes"""
+    return random.choice(AVAILABLE_ROUTES)
 
 def haversine_km(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -47,13 +42,16 @@ class PacketDelivery:
     
     # -------------------------------------------------
     def __post_init__(self):
-        self.waypoints = self.waypoints or DEFAULT_WAYPOINTS
+        self.waypoints = self.waypoints or get_random_route()
         self.start_lat, self.start_lon = self.waypoints[0]
         self.end_lat,   self.end_lon   = self.waypoints[-1]
         self.current_lat, self.current_lon = self.start_lat, self.start_lon
         self._seg_lens = [haversine_km(*a, *b) for a, b in zip(
                           self.waypoints[:-1], self.waypoints[1:])]
         self._prev_lat, self._prev_lon = self.current_lat, self.current_lon
+        
+        # Determine which route was selected for logging
+        self.route_name = get_route_name(self.waypoints)
     
     # -------------------------------------------------
     def update_position(self, delta_seconds: Optional[float] = None):
@@ -112,5 +110,7 @@ class PacketDelivery:
             "end_lat":    self.end_lat,
             "end_lon":    self.end_lon,
             "current_lat": self.current_lat,
-            "current_lon": self.current_lon
+            "current_lon": self.current_lon,
+            "route_name": self.route_name,
+            "waypoint_count": len(self.waypoints)
         }

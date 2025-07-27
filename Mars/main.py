@@ -48,8 +48,8 @@ class Simulator:
         self.speed = SIM_SPEED
 
     def _create_delivery(self) -> PacketDelivery:
-        """Generate a random delivery between two NYC locations"""
-        # Create a new delivery
+        """Generate a random delivery with a randomly selected route"""
+        # Create a new delivery (route will be randomly selected automatically)
         delivery = PacketDelivery(
             device_id=str(uuid.uuid4()),
             vehicle_id=str(uuid.uuid4()),
@@ -58,7 +58,7 @@ class Simulator:
         )
         
         logger.info(
-            f"[SESSION PREPARED] {delivery.device_id} | order {delivery.order_id}")
+            f"[SESSION PREPARED] {delivery.device_id} | order {delivery.order_id} | {delivery.route_name} ({len(delivery.waypoints)} waypoints)")
         return delivery
 
     def update_deliveries(self):
