@@ -33,7 +33,7 @@ export async function GET() {
         FROM default.session_movements
       ),
       all_days AS (
-        SELECT toDate(toStartOfWeek(today()) + number) AS day
+        SELECT toDate(today() - (6 - number)) AS day
         FROM numbers(7)
       )
       SELECT
