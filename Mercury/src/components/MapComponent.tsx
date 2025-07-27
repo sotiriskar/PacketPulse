@@ -67,12 +67,6 @@ function MapController({
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
   const [lastCoords, setLastCoords] = useState<{lat: number, lng: number} | null>(null);
 
-  console.log('MapController: Component rendered with props:', { 
-    selectedSessionId: selectedSession?.session_id, 
-    autoCenter, 
-    hasMap: !!map 
-  });
-
   // Function to center map on selected session
   const centerMap = useCallback(() => {
     if (!selectedSession) return;
@@ -107,19 +101,13 @@ function MapController({
 
   // Handle auto-centering when vehicle moves
   useEffect(() => {
-    console.log('Auto-center effect triggered:', { autoCenter, selectedSession: !!selectedSession });
-    
     if (!autoCenter || !selectedSession) return;
 
     const currentLat = selectedSession.current_latitude;
     const currentLng = selectedSession.current_longitude;
     
-    console.log('Vehicle coordinates:', { currentLat, currentLng });
-    
     if (currentLat && currentLng) {
       const newCoords = { lat: currentLat, lng: currentLng };
-      
-      console.log('Centering map on vehicle:', newCoords);
       setLastCoords(newCoords);
       centerMap();
     }
@@ -134,7 +122,6 @@ function MapController({
       const currentLng = selectedSession.current_longitude;
       
       if (currentLat && currentLng) {
-        console.log('Continuous centering on vehicle:', { currentLat, currentLng });
         // Use the overridden setView to set the auto-centering flag
         map.setView([currentLat, currentLng], 16, { animate: false });
       }
@@ -155,16 +142,13 @@ function MapController({
     // Function to disable auto-center immediately
     const disableAutoCenter = () => {
       if (!isInitialLoad && autoCenter) {
-        console.log('MapController: Manual interaction detected, disabling auto-center');
         onAutoCenterChange(false);
       }
     };
 
     // Listen for zoom control clicks specifically
     const handleZoomControlClick = () => {
-      console.log('MapController: Zoom control clicked, disabling auto-center');
       if (!isInitialLoad && autoCenter) {
-        console.log('MapController: Disabling auto-center due to zoom control click');
         onAutoCenterChange(false);
       }
     };
@@ -176,7 +160,6 @@ function MapController({
         // Remove existing listener first to avoid duplicates
         control.removeEventListener('click', handleZoomControlClick);
         control.addEventListener('click', handleZoomControlClick);
-        console.log('MapController: Added click listener to zoom control');
       });
     };
 
@@ -215,14 +198,9 @@ function RecenterButton({
 }) {
   const map = useMap();
 
-  console.log('RecenterButton render:', { autoCenter, hasSelectedSession: !!selectedSession });
-
   if (autoCenter || !selectedSession) {
-    console.log('RecenterButton: Not rendering because autoCenter is', autoCenter, 'or no selectedSession');
     return null;
   }
-  
-  console.log('RecenterButton: Rendering button');
 
   return (
     <Box
@@ -243,11 +221,9 @@ function RecenterButton({
           size="medium"
           color="primary"
           onClick={() => {
-            console.log('Recenter button clicked');
             setAutoCenter(true);
             // Immediately center on the vehicle
             if (selectedSession.current_latitude && selectedSession.current_longitude) {
-              console.log('Centering on vehicle:', selectedSession.current_latitude, selectedSession.current_longitude);
               map.setView(
                 [selectedSession.current_latitude, selectedSession.current_longitude],
                 16,
@@ -279,16 +255,6 @@ export default function MapComponent({
   const [hasCentered, setHasCentered] = useState(false);
   const [autoCenter, setAutoCenter] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
-  
-  console.log('MapComponent: Received sessions:', sessions.length);
-  console.log('MapComponent: Selected session:', selectedSession?.session_id);
-  console.log('MapComponent: Auto-center state:', autoCenter);
-  console.log('MapComponent: Auto-center state type:', typeof autoCenter);
-  if (selectedSession) {
-    console.log('MapComponent: Selected session coords - Vehicle:', selectedSession.current_latitude, selectedSession.current_longitude);
-    console.log('MapComponent: Selected session coords - Pickup:', selectedSession.start_latitude, selectedSession.start_longitude);
-    console.log('MapComponent: Selected session coords - Delivery:', selectedSession.end_latitude, selectedSession.end_longitude);
-  }
   
   // Create custom marker icons inside the component
   const createCustomIcon = useCallback((color: string, icon: string) => {
@@ -409,7 +375,6 @@ export default function MapComponent({
           <Fab
             size="small"
             onClick={() => {
-              console.log('Auto-center button clicked, enabling auto-center');
               setAutoCenter(true);
             }}
             sx={{
@@ -448,7 +413,6 @@ export default function MapComponent({
             <Fab
               size="small"
               onClick={() => {
-                console.log('Recenter button clicked');
                 setAutoCenter(true);
                 // Force immediate centering
                 if (mapRef.current && selectedSession.current_latitude && selectedSession.current_longitude) {
