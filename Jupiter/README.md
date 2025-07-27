@@ -1,5 +1,7 @@
 # Jupiter - Silver Layer Stream Processor
 
+<img width="1440" height="518" alt="jupiter_1440x518_transparent" src="https://github.com/user-attachments/assets/7283e1a7-f964-4445-a4ef-bab99d3bff40" />
+
 ## Table of Contents
 - [Jupiter - Silver Layer Stream Processor](#jupiter---silver-layer-stream-processor)
   - [Table of Contents](#table-of-contents)
