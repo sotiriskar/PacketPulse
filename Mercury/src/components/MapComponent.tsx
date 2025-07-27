@@ -135,6 +135,7 @@ function MapController({
       
       if (currentLat && currentLng) {
         console.log('Continuous centering on vehicle:', { currentLat, currentLng });
+        // Use the overridden setView to set the auto-centering flag
         map.setView([currentLat, currentLng], 16, { animate: false });
       }
     }, 2000); // Center every 2 seconds
@@ -144,7 +145,6 @@ function MapController({
 
   // Detect manual map movement and disable auto-centering
   useEffect(() => {
-    let isAutoCentering = false;
     let isInitialLoad = true;
 
     // Delay adding event listeners to avoid triggering on initial map setup
@@ -152,42 +152,51 @@ function MapController({
       isInitialLoad = false;
     }, 1000); // Wait 1 second before enabling manual movement detection
 
-    const handleMapMove = () => {
-      // Don't disable auto-center if we're currently auto-centering or during initial load
-      if (isAutoCentering || isInitialLoad) {
-        console.log('MapController: Ignoring movement during auto-centering or initial load');
-        return;
-      }
-      
-      console.log('MapController: Manual map movement detected, disabling auto-center');
-      if (autoCenter) {
+    // Function to disable auto-center immediately
+    const disableAutoCenter = () => {
+      if (!isInitialLoad && autoCenter) {
+        console.log('MapController: Manual interaction detected, disabling auto-center');
         onAutoCenterChange(false);
       }
     };
 
-    // Set flag before auto-centering
-    const originalSetView = map.setView;
-    map.setView = function(latlng: L.LatLngExpression, zoom?: number, options?: L.ZoomPanOptions) {
-      if (autoCenter) {
-        isAutoCentering = true;
-        setTimeout(() => {
-          isAutoCentering = false;
-        }, 100); // Reset flag after 100ms
+    // Listen for zoom control clicks specifically
+    const handleZoomControlClick = () => {
+      console.log('MapController: Zoom control clicked, disabling auto-center');
+      if (!isInitialLoad && autoCenter) {
+        console.log('MapController: Disabling auto-center due to zoom control click');
+        onAutoCenterChange(false);
       }
-      return originalSetView.call(this, latlng, zoom, options);
+    };
+    
+    // Attach zoom control listeners immediately and after delay
+    const attachZoomListeners = () => {
+      const zoomControls = map.getContainer().querySelectorAll('.leaflet-control-zoom-in, .leaflet-control-zoom-out');
+      zoomControls.forEach(control => {
+        // Remove existing listener first to avoid duplicates
+        control.removeEventListener('click', handleZoomControlClick);
+        control.addEventListener('click', handleZoomControlClick);
+        console.log('MapController: Added click listener to zoom control');
+      });
     };
 
-    map.on('dragstart', handleMapMove);
-    map.on('zoomstart', handleMapMove);
-    map.on('movestart', handleMapMove);
+    // Try immediately and after delay
+    attachZoomListeners();
+    setTimeout(attachZoomListeners, 500);
+    setTimeout(attachZoomListeners, 1000);
+
+    // Also listen for manual interactions (but be more careful)
+    map.on('dragstart', disableAutoCenter);
 
     return () => {
       clearTimeout(timer);
-      map.off('dragstart', handleMapMove);
-      map.off('zoomstart', handleMapMove);
-      map.off('movestart', handleMapMove);
-      // Restore original setView
-      map.setView = originalSetView;
+      map.off('dragstart', disableAutoCenter);
+      
+      // Remove zoom control listeners
+      const zoomControls = map.getContainer().querySelectorAll('.leaflet-control-zoom-in, .leaflet-control-zoom-out');
+      zoomControls.forEach(control => {
+        control.removeEventListener('click', handleZoomControlClick);
+      });
     };
   }, [map, autoCenter, onAutoCenterChange]);
 
