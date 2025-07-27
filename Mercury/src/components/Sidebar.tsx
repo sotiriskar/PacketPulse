@@ -40,13 +40,13 @@ const menuItems = [
     id: 'overview',
     label: 'Overview',
     icon: <Dashboard />,
-    description: 'Dashboard overview and KPIs'
+    description: 'KPIs and metrics'
   },
   {
     id: 'map',
     label: 'Live Map',
     icon: <Map />,
-    description: 'Real-time vehicle tracking'
+    description: 'Real-time session tracking'
   },
   {
     id: 'analytics',
@@ -89,19 +89,20 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
       }}
     >
       <Box sx={{ 
-        p: isCollapsed ? 1 : 3, 
+        p: 1,
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
         flexShrink: 0,
-        position: 'relative'
+        position: 'relative',
+        minHeight: 80
       }}>
         {isCollapsed ? (
           <Image
             src="/images/favicon.png"
             alt="PacketPulse"
-            width={70}
-            height={70}
+            width={50}
+            height={50}
             style={{ objectFit: 'contain' }}
           />
         ) : (
@@ -120,7 +121,7 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
       <Divider />
       
       <List sx={{ 
-        px: isCollapsed ? 1 : 2, 
+        px: 1, 
         py: 1, 
         mt: 2,
         flexGrow: 1,
@@ -138,8 +139,11 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
                 selected={selectedTab === item.id}
                 sx={{
                   borderRadius: 2,
-                  minHeight: 48,
+                  height: 48,
+                  px: isCollapsed ? 1 : 2,
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  width: '100%',
+                  overflow: 'hidden',
                   '&.Mui-selected': {
                     backgroundColor: '#fe4e50',
                     color: 'white',
@@ -155,8 +159,14 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
                 <ListItemIcon
                   sx={{
                     color: selectedTab === item.id ? 'inherit' : theme.palette.text.secondary,
-                    minWidth: isCollapsed ? 'auto' : 40,
+                    minWidth: isCollapsed ? 32 : 40,
                     margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '& .MuiSvgIcon-root': {
+                      fontSize: isCollapsed ? '1.25rem' : '1.5rem',
+                    }
                   }}
                 >
                   {item.icon}
@@ -165,9 +175,28 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
                   <ListItemText 
                     primary={item.label}
                     secondary={item.description}
+                    sx={{
+                      ml: 1,
+                      overflow: 'hidden',
+                      '& .MuiListItemText-primary': {
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        lineHeight: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        mb: 0.5,
+                      },
+                      '& .MuiListItemText-secondary': {
+                        lineHeight: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
+                    }}
                     secondaryTypographyProps={{
                       sx: {
-                        fontSize: '0.75rem',
+                        fontSize: '0.65rem',
                         color: selectedTab === item.id ? 'inherit' : theme.palette.text.secondary,
                       }
                     }}
@@ -181,11 +210,11 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
       
       <Box sx={{ 
         mt: 'auto', 
-        p: isCollapsed ? 1 : 2,
+        p: 1,
         flexShrink: 0
       }}>
         <Divider sx={{ mb: 2 }} />
-        <List>
+        <List sx={{ px: 0 }}>
           <ListItem disablePadding>
             <Tooltip 
               title={isCollapsed ? "Settings" : ''} 
@@ -197,8 +226,11 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
                 selected={selectedTab === 'settings'}
                 sx={{
                   borderRadius: 2,
-                  minHeight: 48,
+                  height: 48,
+                  px: isCollapsed ? 1 : 2,
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  width: '100%',
+                  overflow: 'hidden',
                   '&.Mui-selected': {
                     backgroundColor: '#fe4e50',
                     color: 'white',
@@ -213,12 +245,34 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
               >
                 <ListItemIcon sx={{
                   color: selectedTab === 'settings' ? 'inherit' : theme.palette.text.secondary,
-                  minWidth: isCollapsed ? 'auto' : 40,
+                  minWidth: isCollapsed ? 32 : 40,
                   margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '& .MuiSvgIcon-root': {
+                    fontSize: isCollapsed ? '1.25rem' : '1.5rem',
+                  }
                 }}>
                   <Settings />
                 </ListItemIcon>
-                {!isCollapsed && <ListItemText primary="Settings" />}
+                {!isCollapsed && (
+                  <ListItemText 
+                    primary="Settings"
+                    sx={{
+                      ml: 1,
+                      overflow: 'hidden',
+                      '& .MuiListItemText-primary': {
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        lineHeight: 1.2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
+                    }}
+                  />
+                )}
               </ListItemButton>
             </Tooltip>
           </ListItem>
@@ -232,22 +286,47 @@ export default function Sidebar({ selectedTab, onTabChange, isCollapsed, onLogou
                 onClick={onLogout}
                 sx={{
                   borderRadius: 2,
-                  minHeight: 48,
+                  height: 48,
+                  px: isCollapsed ? 1 : 2,
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
                   color: theme.palette.text.secondary,
+                  width: '100%',
+                  overflow: 'hidden',
                   '&:hover': {
                     backgroundColor: theme.palette.action.hover,
                   },
                 }}
               >
                 <ListItemIcon sx={{
-                  minWidth: isCollapsed ? 'auto' : 40,
+                  minWidth: isCollapsed ? 32 : 40,
                   margin: 0,
                   color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '& .MuiSvgIcon-root': {
+                    fontSize: isCollapsed ? '1.25rem' : '1.5rem',
+                  }
                 }}>
                   <MeetingRoom />
                 </ListItemIcon>
-                {!isCollapsed && <ListItemText primary="Logout" />}
+                {!isCollapsed && (
+                  <ListItemText 
+                    primary="Logout"
+                    sx={{
+                      ml: 1,
+                      overflow: 'hidden',
+                      '& .MuiListItemText-primary': {
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        lineHeight: 1.2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
+                    }}
+                  />
+                )}
               </ListItemButton>
             </Tooltip>
           </ListItem>
