@@ -104,8 +104,42 @@ Each component can be run independently. See individual README files for detaile
 
 ## Contributing
 
+We welcome contributions to PacketPulse! Here's how you can help:
 
+### Getting Started
 
-## License
+1. **Fork the repository** and clone it locally
+2. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Make your changes** and commit them
+4. **Push to your fork** and create a pull request
 
-MIT 
+### Reporting Issues
+
+- **Search existing issues** before creating a new one
+- **Include details** about your environment and steps to reproduce
+- **Add logs** and error messages when applicable
+
+### Pull Requests
+
+- **Describe your changes** clearly in the PR description
+- **Add tests** for new functionality
+- **Update documentation** if needed
+- **Ensure all checks pass** before submitting
+
+### Code Style
+
+- **Python**: Follow PEP 8 standards
+- **TypeScript**: Use ESLint and Prettier
+- **SQL**: Follow dbt style guide
+- **Documentation**: Update README files for new features
+
+### Getting Help
+
+- Check the individual component READMEs for detailed setup instructions
+- Open an issue for bugs or feature requests
+- Ask questions in GitHub Discussions
+
+By contributing, you agree that your contributions will be licensed under the MIT License. 
